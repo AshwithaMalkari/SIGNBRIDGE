@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - SIGNBRIDGE</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+</head>
+<body>
+  <button id="menu-btn" class="menu-btn" aria-label="Toggle menu">
+    <i data-feather="menu"></i>
+  </button>
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <span class="logo-icon"></span>
+        <span class="logo-text">SIGNBRIDGE</span>
+      </div>
+      <nav class="nav-menu">
+        <a href="{{ url_for('index') }}" class="nav-item">
+          <i data-feather="mic"></i>
+          <span>Translate</span>
+        </a>
+        <a href="{{ url_for('about') }}" class="nav-item active">
+          <i data-feather="info"></i>
+          <span>About</span>
+        </a>
+        <a href="{{ url_for('contact') }}" class="nav-item">
+            <i data-feather="mail"></i>
+            <span>Contact</span>
+          </a>
+      </nav>
+      <div class="theme-toggle">
+        <i data-feather="moon"></i>
+        <span>Dark Mode</span>
+      </div>
+    </div>
+
+    <main class="content">
+      <header class="content-header">
+        <h1>ABOUT SIGNBRIDGE</h1>
+        <p class="subtitle">Learn more about our mission and features</p>
+      </header>
+
+      <!-- About Section -->
+      <div class="about-section">
+        <h2>ABOUT SIGNBRIDGE</h2>
+        <p>
+          <strong>SIGNBRIDGE</strong> is an innovative Indian Sign Language (ISL) translation platform designed to bridge the communication gap between spoken language and Indian Sign Language.The system combines speech recognition, text processing, ISL grammar translation, sign recognition, and interactive 3D sign language animations to provide an accessible communication experience.
+        </p>
+        <h3>Features</h3>
+        <ul>
+          <li>Real-time speech-to-text transcription.</li>
+          <li>Text-to-Indian Sign Language translation.</li>
+          <li>Interactive sign language animations.</li>
+          <li>User-friendly interface.</li>
+        </ul>
+        <h3>How It Works</h3>
+        <p>
+          SIGNBRIDGE provides multiple ways to interact with Indian Sign Language.For speech input, the system captures the user's spoken words and converts them into text. The text is then processed into an appropriate ISL structure and displayed through corresponding sign language animations.Users can also enter text directly and receive the corresponding ISL translation and animation. In addition, the sign input feature uses a webcam to recognize hand signs and convert them into readable characters.
+        </p>
+        <h3>Our Mission</h3>
+        <p>
+          Our mission is to build inclusive technology that helps reduce communication barriers between hearing and deaf communities.<strong>SIGNBRIDGE</strong> aims to make Indian
+                Sign Language more accessible through technology
+                while providing a simple, interactive, and
+                user-friendly communication platform.
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      feather.replace();
+      
+      // Theme toggle functionality
+      const themeToggle = document.querySelector('.theme-toggle');
+      themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+      });
+
+      // Mobile sidebar toggle
+      const menuBtn = document.getElementById('menu-btn');
+      const sidebar = document.querySelector('.sidebar');
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+      const closeSidebar = () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('show');
+      };
+
+      menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('show');
+      });
+
+      sidebarOverlay.addEventListener('click', closeSidebar);
+
+      document.querySelectorAll('.nav-item').forEach((link) => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) closeSidebar();
+        });
+      });
+    });
+  </script>
+</body>
+</html>

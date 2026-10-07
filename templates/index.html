@@ -1,0 +1,2262 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Speech to ISL Translator</title>
+
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='styles.css') }}">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+
+  <!-- Three.js -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <!-- ======================================================
+       SIGN INPUT STYLES
+       ====================================================== -->
+
+  <style>
+
+    .sign-input-panel {
+      display: none;
+      padding: 28px;
+    }
+
+    .sign-input-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sign-camera-card {
+      background: #f8f9fc;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .sign-camera-wrapper {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #111827;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #signVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .sign-camera-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    .sign-camera-placeholder svg {
+      width: 50px;
+      height: 50px;
+      margin-bottom: 12px;
+    }
+
+    .sign-camera-controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .sign-camera-controls button {
+      min-width: 150px;
+    }
+
+    .sign-status {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #eef2ff;
+      color: #4361ee;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .sign-result-card {
+      background: #f8f9fc;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 22px;
+    }
+
+    .sign-result-card h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #4361ee;
+    }
+
+    #signCurrentLetter {
+      font-size: 64px;
+      font-weight: 700;
+      text-align: center;
+      padding: 20px;
+      min-height: 90px;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      color: #4361ee;
+      margin-bottom: 18px;
+    }
+
+    .sign-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    .sign-info-row:last-child {
+      border-bottom: none;
+    }
+
+    .sign-info-label {
+      color: #6b7280;
+    }
+
+    .sign-info-value {
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .sign-text-section {
+      margin-top: 24px;
+    }
+
+    .sign-text-section label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    #signRecognizedText {
+      width: 100%;
+      min-height: 100px;
+      resize: vertical;
+      box-sizing: border-box;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 14px;
+      font-family: Inter, sans-serif;
+      font-size: 18px;
+      background: white;
+    }
+
+    .sign-action-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sign-action-row button {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .sign-help {
+      margin-top: 18px;
+      padding: 14px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #6b7280;
+    }
+
+    .sign-recording-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #9ca3af;
+      margin-right: 7px;
+    }
+
+    .sign-recording-dot.active {
+      background: #ef4444;
+      box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12);
+    }
+
+    @media (max-width: 900px) {
+
+      .sign-input-layout {
+        grid-template-columns: 1fr;
+      }
+
+    }
+
+  </style>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#ffffff">
+
+</head>
+
+
+<body>
+
+  <!-- ======================================================
+       MOBILE MENU
+       ====================================================== -->
+
+  <button id="menu-btn"
+          class="menu-btn"
+          aria-label="Toggle menu">
+
+    <i data-feather="menu"></i>
+
+  </button>
+
+
+  <div id="sidebar-overlay"
+       class="sidebar-overlay">
+  </div>
+
+
+  <div class="app-container">
+
+
+    <!-- ====================================================
+         SIDEBAR
+         ==================================================== -->
+
+    <div class="sidebar">
+
+      <div class="logo">
+
+        <svg xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 160 50"
+             class="logo-img">
+
+          <rect x="5"
+                y="5"
+                width="40"
+                height="40"
+                rx="8"
+                fill="#4361ee" />
+
+          <path d="M25 12 L25 32 Q25 38, 20 38 T15 32 L15 20 Q15 14, 20 14 T25 20"
+                stroke="white"
+                stroke-width="2.5"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round" />
+
+          <path d="M35 12 L35 32 Q35 38, 30 38 T25 32 L25 20"
+                stroke="white"
+                stroke-width="2.5"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round" />
+
+          <path d="M45 18 Q50 18, 50 25 Q50 32, 45 32"
+                stroke="#4cc9f0"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round" />
+
+          <path d="M50 15 Q58 15, 58 25 Q58 35, 50 35"
+                stroke="#4cc9f0"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round" />
+
+          <path d="M55 12 Q65 12, 65 25 Q65 38, 55 38"
+                stroke="#4cc9f0"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round" />
+
+          <text x="70"
+                y="22"
+                font-family="Inter, sans-serif"
+                font-size="14"
+                font-weight="700"
+                fill="#4361ee">
+            SIGNBRIDGE
+          </text>
+
+        </svg>
+
+      </div>
+
+
+      <nav class="nav-menu">
+
+        <a href="{{ url_for('index') }}"
+           class="nav-item active">
+
+          <i data-feather="mic"></i>
+
+          <span>Translate</span>
+
+        </a>
+
+
+        <a href="#"
+           id="history-button"
+           class="nav-item">
+
+          <i data-feather="clock"></i>
+
+          <span>History</span>
+
+        </a>
+
+
+        <a href="{{ url_for('about') }}"
+           class="nav-item">
+
+          <i data-feather="info"></i>
+
+          <span>About</span>
+
+        </a>
+
+
+        <a href="{{ url_for('contact') }}"
+           class="nav-item">
+
+          <i data-feather="mail"></i>
+
+          <span>Contact Us</span>
+
+        </a>
+
+      </nav>
+
+
+      <div class="theme-toggle">
+
+        <i data-feather="moon"></i>
+
+        <span>Dark Mode</span>
+
+        <div class="toggle-switch"></div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ====================================================
+         MAIN CONTENT
+         ==================================================== -->
+
+    <main class="content">
+
+
+      <header class="content-header">
+
+        <h1>
+          SIGNBRIDGE
+        </h1>
+
+        <p class="subtitle">
+          Connecting communication through speech, text, and sign language
+        </p>
+
+      </header>
+
+
+      <div class="workspace">
+
+
+        <!-- ==================================================
+             INPUT PANEL
+             ================================================== -->
+
+        <div class="input-panel">
+
+
+          <!-- =================================================
+               TABS
+               ================================================= -->
+
+          <div class="input-tabs">
+
+            <button class="tab-button active"
+                    data-tab="voice">
+
+              <i data-feather="mic"></i>
+
+              <span>
+                Voice Input
+              </span>
+
+            </button>
+
+
+            <button class="tab-button"
+                    data-tab="text">
+
+              <i data-feather="type"></i>
+
+              <span>
+                Text Input
+              </span>
+
+            </button>
+
+
+            <!-- NEW SIGN TAB -->
+
+            <button class="tab-button"
+                    data-tab="sign"
+                    id="signTabButton">
+
+              <i data-feather="video"></i>
+
+              <span>
+                Sign Input
+              </span>
+
+            </button>
+
+
+            <div class="tab-indicator"></div>
+
+          </div>
+
+
+          <!-- =================================================
+               VOICE / TEXT CONTROLS
+               ================================================= -->
+
+          <div id="normalInputPanel">
+
+            <div class="panel-header">
+
+              <div class="controls">
+
+                <button id="micButton"
+                        class="btn primary">
+
+                  <i data-feather="mic"></i>
+
+                  <span>
+                    Start Recording
+                  </span>
+
+                </button>
+
+
+                <button id="textSubmitButton"
+                        class="btn primary"
+                        style="display: none;">
+
+                  <i data-feather="send"></i>
+
+                  <span>
+                    Translate
+                  </span>
+
+                </button>
+
+
+                <button id="clearButton"
+                        class="btn secondary">
+
+                  <i data-feather="trash-2"></i>
+
+                  <span>
+                    Clear
+                  </span>
+
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <div class="transcript-container">
+
+              <textarea
+                id="textInput"
+                placeholder="Type your text here..."
+                style="display: none;"></textarea>
+
+
+              <textarea
+                id="transcript"
+                readonly
+                placeholder="Your transcribed text will appear here...">
+              </textarea>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               SIGN INPUT PANEL
+               ================================================= -->
+
+          <div id="signInputPanel"
+               class="sign-input-panel">
+
+
+            <div class="sign-input-layout">
+
+
+              <!-- =============================================
+                   CAMERA
+                   ============================================= -->
+
+              <div class="sign-camera-card">
+
+                <h2>
+                  🤟 Sign Input
+                </h2>
+
+                <p style="color:#6b7280; margin-top:-5px;">
+                  Make an ISL alphabet or digit sign in front of
+                  your webcam.
+                </p>
+
+
+                <div class="sign-camera-wrapper">
+
+                  <img
+                    id="signVideo"
+                    src=""
+                    alt="ISL Sign Recognition Camera">
+
+
+                  <div
+                    id="signCameraPlaceholder"
+                    class="sign-camera-placeholder">
+
+                    <i data-feather="camera"></i>
+
+                    <p>
+                      Camera is stopped
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                <div class="sign-camera-controls">
+
+                  <button
+                    id="startSignButton"
+                    class="btn primary">
+
+                    <i data-feather="video"></i>
+
+                    <span>
+                      Start Sign Input
+                    </span>
+
+                  </button>
+
+
+                  <button
+                    id="stopSignButton"
+                    class="btn secondary"
+                    disabled>
+
+                    <i data-feather="square"></i>
+
+                    <span>
+                      Stop
+                    </span>
+
+                  </button>
+
+                </div>
+
+
+                <div
+                  id="signStatus"
+                  class="sign-status">
+
+                  <span
+                    id="signStatusDot"
+                    class="sign-recording-dot">
+                  </span>
+
+                  <span id="signStatusText">
+                    Camera stopped
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              <!-- =============================================
+                   RECOGNITION RESULT
+                   ============================================= -->
+
+              <div class="sign-result-card">
+
+                <h3>
+                  Recognized Sign
+                </h3>
+
+
+                <div id="signCurrentLetter">
+                  —
+                </div>
+
+
+                <div class="sign-info-row">
+
+                  <span class="sign-info-label">
+                    Prediction
+                  </span>
+
+                  <span
+                    id="signPrediction"
+                    class="sign-info-value">
+                    —
+                  </span>
+
+                </div>
+
+
+                <div class="sign-info-row">
+
+                  <span class="sign-info-label">
+                    Confidence
+                  </span>
+
+                  <span
+                    id="signConfidence"
+                    class="sign-info-value">
+                    0%
+                  </span>
+
+                </div>
+
+
+                <div class="sign-info-row">
+
+                  <span class="sign-info-label">
+                    Hands detected
+                  </span>
+
+                  <span
+                    id="signHands"
+                    class="sign-info-value">
+                    0
+                  </span>
+
+                </div>
+
+
+                <div class="sign-info-row">
+
+                  <span class="sign-info-label">
+                    Model
+                  </span>
+
+                  <span
+                    id="signModel"
+                    class="sign-info-value">
+                    —
+                  </span>
+
+                </div>
+
+
+                <!-- ===========================================
+                     RECOGNIZED TEXT
+                     =========================================== -->
+
+                <div class="sign-text-section">
+
+                  <label for="signRecognizedText">
+                    Sign-to-Text
+                  </label>
+
+
+                  <textarea
+                    id="signRecognizedText"
+                    placeholder="Recognized letters will appear here...">
+                  </textarea>
+
+
+                  <div class="sign-action-row">
+
+                    <button
+                      id="signSpaceButton"
+                      class="btn secondary">
+
+                      Space
+
+                    </button>
+
+
+                    <button
+                      id="signBackspaceButton"
+                      class="btn secondary">
+
+                      Backspace
+
+                    </button>
+
+
+                    <button
+                      id="signClearButton"
+                      class="btn secondary">
+
+                      Clear
+
+                    </button>
+
+                  </div>
+
+
+                  <div class="sign-action-row">
+
+                    <button
+                      id="signTranslateButton"
+                      class="btn primary">
+
+                      <i data-feather="play"></i>
+
+                      Sign with 3D Avatar
+
+                    </button>
+
+                  </div>
+
+
+                  <div class="sign-help">
+
+                    <strong>How to use:</strong><br>
+
+                    1. Click <strong>Start Sign Input</strong>.<br>
+
+                    2. Show one ISL alphabet/digit sign to the
+                    webcam.<br>
+
+                    3. Hold the sign steady briefly so the
+                    recognizer can stabilize it.<br>
+
+                    4. The recognized letter is added to the
+                    text automatically.<br>
+
+                    5. Use <strong>Space</strong> between words.<br>
+
+                    6. Click <strong>Sign with 3D Avatar</strong>
+                    to send the recognized text to the existing
+                    avatar pipeline.
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             OUTPUT PANEL
+             ================================================== -->
+
+        <div class="output-panel">
+
+
+          <!-- =================================================
+               GRAMMAR
+               ================================================= -->
+
+          <div class="grammar-section">
+
+            <h2>
+              ISL Grammar
+            </h2>
+
+
+            <div
+              id="islBox"
+              class="result-box">
+            </div>
+
+
+            <div class="processed-text-section">
+
+              <h2>
+                Processed Text
+              </h2>
+
+
+              <textarea
+                id="processed-text"
+                readonly
+                placeholder="processed text will appear here..."
+                class="result-box">
+              </textarea>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               ANIMATION
+               ================================================= -->
+
+          <div class="animation-section">
+
+            <h2>
+              Sign Language Animation
+            </h2>
+
+
+            <div class="animation-controls">
+
+              <label for="speedSlider">
+
+                Animation Speed:
+
+                <span id="speedValue">
+                  1.0x
+                </span>
+
+              </label>
+
+
+              <input
+                type="range"
+                id="speedSlider"
+                min="0.1"
+                max="2"
+                step="0.1"
+                value="1.0">
+
+            </div>
+
+
+            <div
+              id="animationContainer"
+              class="animation-container">
+
+              <div class="placeholder-animation">
+
+                <i data-feather="video"></i>
+
+                <p>
+                  Animation will appear here
+                </p>
+
+              </div>
+
+            </div>
+
+
+            <textarea
+              id="output-text"
+              class="hidden">
+            </textarea>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <!-- ======================================================
+         HISTORY PANEL
+         ====================================================== -->
+
+    <div
+      id="history-panel"
+      class="history-panel">
+
+      <div class="history-header">
+
+        <h3>
+          Conversion History
+        </h3>
+
+
+        <button id="clearHistoryButton">
+          Clear All
+        </button>
+
+
+        <button
+          id="close-history"
+          class="btn icon-btn">
+
+          <i data-feather="x"></i>
+
+        </button>
+
+      </div>
+
+
+      <div
+        id="history-list"
+        class="history-list">
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ========================================================
+       EXISTING APPLICATION SCRIPT
+       ======================================================== -->
+
+  <script
+    type="module"
+    src="{{ url_for('static', filename='script.js') }}">
+  </script>
+
+
+  <!-- ========================================================
+       SIGN INPUT CONTROLLER
+       ======================================================== -->
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // ====================================================
+    // ELEMENTS
+    // ====================================================
+
+    const signTabButton =
+        document.getElementById("signTabButton");
+
+    const normalInputPanel =
+        document.getElementById("normalInputPanel");
+
+    const signInputPanel =
+        document.getElementById("signInputPanel");
+
+    const signVideo =
+        document.getElementById("signVideo");
+
+    const signCameraPlaceholder =
+        document.getElementById("signCameraPlaceholder");
+
+    const startSignButton =
+        document.getElementById("startSignButton");
+
+    const stopSignButton =
+        document.getElementById("stopSignButton");
+
+    const signStatusText =
+        document.getElementById("signStatusText");
+
+    const signStatusDot =
+        document.getElementById("signStatusDot");
+
+    const signCurrentLetter =
+        document.getElementById("signCurrentLetter");
+
+    const signPrediction =
+        document.getElementById("signPrediction");
+
+    const signConfidence =
+        document.getElementById("signConfidence");
+
+    const signHands =
+        document.getElementById("signHands");
+
+    const signModel =
+        document.getElementById("signModel");
+
+    const signRecognizedText =
+        document.getElementById("signRecognizedText");
+
+    const signSpaceButton =
+        document.getElementById("signSpaceButton");
+
+    const signBackspaceButton =
+        document.getElementById("signBackspaceButton");
+
+    const signClearButton =
+        document.getElementById("signClearButton");
+
+    const signTranslateButton =
+        document.getElementById("signTranslateButton");
+
+
+    // ====================================================
+    // STATE
+    // ====================================================
+
+    let signRunning = false;
+
+    let signPollingTimer = null;
+
+    let signStateRequestInProgress = false;
+
+
+    // ====================================================
+    // SIGN ACCEPTANCE CONTROL
+    // ====================================================
+
+    /*
+     * IMPORTANT
+     *
+     * The recognizer must NOT freeze the sign immediately
+     * when the first hand appears.
+     *
+     * We first allow the user time to complete the sign.
+     */
+
+    const SIGN_FORMATION_DELAY_MS = 1200;
+
+
+    /*
+     * After the formation delay, the same prediction must
+     * still appear for several polling cycles.
+     *
+     * Polling = 250 ms
+     *
+     * 4 frames = approximately 1 second.
+     */
+
+    const REQUIRED_STABLE_PREDICTION_FRAMES = 4;
+
+
+    /*
+     * Require several consecutive frames with NO HAND
+     * before another letter can be accepted.
+     *
+     * 4 × 250 ms = approximately 1 second.
+     */
+
+    const REQUIRED_NO_HAND_FRAMES = 4;
+
+
+    /*
+     * Minimum confidence.
+     */
+
+    const MIN_CONFIDENCE = 0.50;
+
+
+    /*
+     * ----------------------------------------------------
+     * FORMATION TIMER
+     * ----------------------------------------------------
+     *
+     * When the first hand appears we start a timer.
+     *
+     * If the hand configuration changes:
+     *
+     *      1 hand -> 2 hands
+     *
+     * the timer starts again.
+     *
+     * This is the important fix for your problem.
+     */
+
+    let formationStartTime = null;
+
+
+    /*
+     * Number of hands that existed when the current
+     * formation period started.
+     */
+
+    let formationHandCount = 0;
+
+
+    /*
+     * Candidate prediction currently being checked.
+     */
+
+    let candidatePrediction = "";
+
+
+    /*
+     * Number of consecutive identical predictions.
+     */
+
+    let stablePredictionCount = 0;
+
+
+    /*
+     * Number of consecutive frames where no hand
+     * was detected.
+     */
+
+    let noHandFrames = 0;
+
+
+    /*
+     * Prevent the same physical sign from being
+     * recognized repeatedly.
+     */
+
+    let signReadyForNextLetter = true;
+
+
+    // ====================================================
+    // RESET SIGN STATE
+    // ====================================================
+
+    function resetSignGate() {
+
+        signReadyForNextLetter = true;
+
+        formationStartTime = null;
+
+        formationHandCount = 0;
+
+        candidatePrediction = "";
+
+        stablePredictionCount = 0;
+
+        noHandFrames = 0;
+
+    }
+
+
+    // ====================================================
+    // TAB - SIGN INPUT
+    // ====================================================
+
+    if (signTabButton) {
+
+        signTabButton.addEventListener(
+            "click",
+            function () {
+
+                document
+                    .querySelectorAll(".tab-button")
+                    .forEach(function (button) {
+
+                        button.classList.remove(
+                            "active"
+                        );
+
+                    });
+
+
+                signTabButton.classList.add(
+                    "active"
+                );
+
+
+                normalInputPanel.style.display =
+                    "none";
+
+
+                signInputPanel.style.display =
+                    "block";
+
+            }
+        );
+
+    }
+
+
+    // ====================================================
+    // VOICE / TEXT TABS
+    // ====================================================
+
+    document
+        .querySelectorAll(
+            '.tab-button[data-tab="voice"], .tab-button[data-tab="text"]'
+        )
+        .forEach(function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    signInputPanel.style.display =
+                        "none";
+
+
+                    normalInputPanel.style.display =
+                        "block";
+
+                }
+            );
+
+        });
+
+
+    // ====================================================
+    // START SIGN RECOGNITION
+    // ====================================================
+
+    if (startSignButton) {
+
+        startSignButton.addEventListener(
+            "click",
+            async function () {
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/sign_start",
+                            {
+                                method: "POST"
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (data.error) {
+
+                        alert(
+                            data.message ||
+                            "Could not start webcam."
+                        );
+
+                        return;
+
+                    }
+
+
+                    signRunning = true;
+
+
+                    /*
+                     * Start completely fresh.
+                     */
+
+                    resetSignGate();
+
+
+                    signVideo.src =
+                        "/sign_video?time=" +
+                        Date.now();
+
+
+                    signVideo.style.display =
+                        "block";
+
+
+                    signCameraPlaceholder.style.display =
+                        "none";
+
+
+                    startSignButton.disabled =
+                        true;
+
+
+                    stopSignButton.disabled =
+                        false;
+
+
+                    signStatusText.textContent =
+                        "Sign recognition running";
+
+
+                    signStatusDot.classList.add(
+                        "active"
+                    );
+
+
+                    startSignPolling();
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Sign start error:",
+                        error
+                    );
+
+
+                    alert(
+                        "Could not start sign recognition."
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ====================================================
+    // STOP SIGN RECOGNITION
+    // ====================================================
+
+    if (stopSignButton) {
+
+        stopSignButton.addEventListener(
+            "click",
+            async function () {
+
+                await stopSignRecognition();
+
+            }
+        );
+
+    }
+
+
+    async function stopSignRecognition() {
+
+        signRunning = false;
+
+
+        if (signPollingTimer) {
+
+            clearInterval(
+                signPollingTimer
+            );
+
+            signPollingTimer = null;
+
+        }
+
+
+        signStateRequestInProgress =
+            false;
+
+
+        try {
+
+            await fetch(
+                "/sign_stop",
+                {
+                    method: "POST"
+                }
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Sign stop error:",
+                error
+            );
+
+        }
+
+
+        signVideo.src = "";
+
+
+        signVideo.style.display =
+            "none";
+
+
+        signCameraPlaceholder.style.display =
+            "flex";
+
+
+        startSignButton.disabled =
+            false;
+
+
+        stopSignButton.disabled =
+            true;
+
+
+        signStatusText.textContent =
+            "Camera stopped";
+
+
+        signStatusDot.classList.remove(
+            "active"
+        );
+
+
+        resetSignGate();
+
+    }
+
+
+    // ====================================================
+    // POLL RECOGNITION RESULT
+    // ====================================================
+
+    function startSignPolling() {
+
+        if (signPollingTimer) {
+
+            clearInterval(
+                signPollingTimer
+            );
+
+        }
+
+
+        signPollingTimer =
+            setInterval(
+                async function () {
+
+                    if (!signRunning) {
+                        return;
+                    }
+
+
+                    /*
+                     * Never overlap requests.
+                     */
+
+                    if (
+                        signStateRequestInProgress
+                    ) {
+                        return;
+                    }
+
+
+                    signStateRequestInProgress =
+                        true;
+
+
+                    try {
+
+                        const response =
+                            await fetch(
+                                "/sign_state?time=" +
+                                Date.now()
+                            );
+
+
+                        const data =
+                            await response.json();
+
+
+                        if (data.error) {
+                            return;
+                        }
+
+
+                        updateSignResult(data);
+
+                    }
+
+                    catch (error) {
+
+                        console.error(
+                            "Sign state error:",
+                            error
+                        );
+
+                    }
+
+                    finally {
+
+                        signStateRequestInProgress =
+                            false;
+
+                    }
+
+                },
+                250
+            );
+
+    }
+
+
+    // ====================================================
+    // UPDATE SIGN RESULT
+    // ====================================================
+
+    function updateSignResult(data) {
+
+        /*
+         * IMPORTANT:
+         *
+         * Prefer the CURRENT prediction here.
+         *
+         * We want this frontend controller to decide
+         * when the sign is stable.
+         *
+         * A backend stable prediction can otherwise
+         * become available before the complete hand
+         * configuration has formed.
+         */
+
+        const prediction =
+            String(
+                data.prediction ||
+                data.stable_prediction ||
+                ""
+            )
+                .trim()
+                .toUpperCase();
+
+
+        const confidence =
+            Number(
+                data.confidence || 0
+            );
+
+
+        const handCount =
+            Number(
+                data.hand_count || 0
+            );
+
+
+        // ==================================================
+        // LIVE DISPLAY
+        // ==================================================
+
+        signPrediction.textContent =
+            prediction || "—";
+
+
+        signCurrentLetter.textContent =
+            prediction || "—";
+
+
+        signConfidence.textContent =
+            Math.round(
+                confidence * 100
+            ) + "%";
+
+
+        signHands.textContent =
+            handCount;
+
+
+        signModel.textContent =
+            data.model || "—";
+
+
+        // ==================================================
+        // NO HAND
+        // ==================================================
+
+        if (handCount === 0) {
+
+            /*
+             * No hand means the user has released
+             * the previous sign.
+             */
+
+            noHandFrames++;
+
+
+            /*
+             * The formation timer is cleared.
+             */
+
+            formationStartTime =
+                null;
+
+
+            formationHandCount =
+                0;
+
+
+            candidatePrediction =
+                "";
+
+
+            stablePredictionCount =
+                0;
+
+
+            /*
+             * Unlock only after several consecutive
+             * no-hand frames.
+             */
+
+            if (
+                noHandFrames >=
+                REQUIRED_NO_HAND_FRAMES
+            ) {
+
+                signReadyForNextLetter =
+                    true;
+
+            }
+
+
+            signStatusText.textContent =
+                "Show your hand";
+
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // HAND PRESENT
+        // ==================================================
+
+        noHandFrames = 0;
+
+
+        if (!signRunning) {
+            return;
+        }
+
+
+        // ==================================================
+        // HAND CONFIGURATION CHANGE
+        // ==================================================
+
+        /*
+         * THIS IS THE MAIN FIX.
+         *
+         * Example:
+         *
+         * Frame 1:
+         *      Hands = 1
+         *
+         * Frame 2:
+         *      Hands = 1
+         *
+         * Frame 3:
+         *      Hands = 2
+         *
+         * When 1 -> 2 happens, we DO NOT keep the old
+         * stability timer.
+         *
+         * We restart the formation period.
+         *
+         * This gives the second hand time to complete
+         * the actual two-hand sign.
+         */
+
+        if (
+            formationHandCount !==
+            handCount
+        ) {
+
+            formationHandCount =
+                handCount;
+
+
+            formationStartTime =
+                Date.now();
+
+
+            candidatePrediction =
+                "";
+
+
+            stablePredictionCount =
+                0;
+
+
+            signStatusText.textContent =
+                handCount === 2
+                    ? "Both hands detected — forming sign..."
+                    : "Hand detected — forming sign...";
+
+
+            /*
+             * IMPORTANT:
+             *
+             * Do not recognize anything on the same
+             * frame where the hand configuration changes.
+             */
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // START FORMATION TIMER
+        // ==================================================
+
+        if (
+            formationStartTime ===
+            null
+        ) {
+
+            formationStartTime =
+                Date.now();
+
+
+            formationHandCount =
+                handCount;
+
+
+            candidatePrediction =
+                "";
+
+
+            stablePredictionCount =
+                0;
+
+
+            signStatusText.textContent =
+                handCount === 2
+                    ? "Both hands detected — forming sign..."
+                    : "Hand detected — forming sign...";
+
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // FORMATION DELAY
+        // ==================================================
+
+        const formationElapsed =
+            Date.now() -
+            formationStartTime;
+
+
+        /*
+         * Wait until the complete sign has had enough
+         * time to form.
+         */
+
+        if (
+            formationElapsed <
+            SIGN_FORMATION_DELAY_MS
+        ) {
+
+            const remaining =
+                Math.max(
+                    0,
+                    SIGN_FORMATION_DELAY_MS -
+                    formationElapsed
+                );
+
+
+            signStatusText.textContent =
+                handCount === 2
+                    ? "Both hands detected — hold sign..."
+                    : "Hand detected — hold sign...";
+
+
+            /*
+             * Do NOT process a prediction yet.
+             */
+
+            candidatePrediction =
+                "";
+
+
+            stablePredictionCount =
+                0;
+
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // BASIC VALIDATION
+        // ==================================================
+
+        if (!prediction) {
+
+            /*
+             * The hands are still present, so keep
+             * the formation timer alive.
+             */
+
+            return;
+
+        }
+
+
+        /*
+         * Alphabet / digit signs should produce
+         * exactly one character.
+         */
+
+        if (
+            prediction.length !== 1
+        ) {
+
+            return;
+
+        }
+
+
+        /*
+         * Ignore low-confidence results.
+         */
+
+        if (
+            confidence <
+            MIN_CONFIDENCE
+        ) {
+
+            /*
+             * Do NOT immediately reset the candidate.
+             *
+             * A single weak frame should not destroy
+             * a valid sign.
+             */
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // STABLE PREDICTION
+        // ==================================================
+
+        if (
+            candidatePrediction ===
+            prediction
+        ) {
+
+            stablePredictionCount++;
+
+        }
+
+        else {
+
+            /*
+             * New prediction.
+             *
+             * Start stability counting again.
+             */
+
+            candidatePrediction =
+                prediction;
+
+
+            stablePredictionCount =
+                1;
+
+        }
+
+
+        // ==================================================
+        // WAIT FOR STABILITY
+        // ==================================================
+
+        if (
+            stablePredictionCount <
+            REQUIRED_STABLE_PREDICTION_FRAMES
+        ) {
+
+            signStatusText.textContent =
+                handCount === 2
+                    ? "Two-hand sign stabilizing..."
+                    : "Sign stabilizing...";
+
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // DUPLICATE PROTECTION
+        // ==================================================
+
+        /*
+         * The previous sign has already been accepted.
+         *
+         * Do NOT accept another letter while the user
+         * is still holding the hands.
+         */
+
+        if (
+            !signReadyForNextLetter
+        ) {
+
+            signStatusText.textContent =
+                "Sign locked — release hands for next letter";
+
+
+            return;
+
+        }
+
+
+        // ==================================================
+        // ADD EXACTLY ONE LETTER
+        // ==================================================
+
+        signRecognizedText.value +=
+            prediction;
+
+
+        signRecognizedText.scrollTop =
+            signRecognizedText.scrollHeight;
+
+
+        // ==================================================
+        // LOCK IMMEDIATELY
+        // ==================================================
+
+        signReadyForNextLetter =
+            false;
+
+
+        /*
+         * Clear stability tracking.
+         */
+
+        candidatePrediction =
+            "";
+
+
+        stablePredictionCount =
+            0;
+
+
+        /*
+         * Keep formation timer inactive while
+         * the current sign is locked.
+         */
+
+        formationStartTime =
+            null;
+
+
+        signStatusText.textContent =
+            "Sign accepted — release hands";
+
+
+    }
+
+
+    // ====================================================
+    // SPACE
+    // ====================================================
+
+    if (signSpaceButton) {
+
+        signSpaceButton.addEventListener(
+            "click",
+            function () {
+
+                signRecognizedText.value +=
+                    " ";
+
+
+                signRecognizedText.scrollTop =
+                    signRecognizedText.scrollHeight;
+
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * Space does NOT unlock recognition.
+                 *
+                 * The user still has to release the
+                 * current sign.
+                 */
+
+            }
+        );
+
+    }
+
+
+    // ====================================================
+    // BACKSPACE
+    // ====================================================
+
+    if (signBackspaceButton) {
+
+        signBackspaceButton.addEventListener(
+            "click",
+            function () {
+
+                signRecognizedText.value =
+                    signRecognizedText.value.slice(
+                        0,
+                        -1
+                    );
+
+
+                /*
+                 * Do not unlock the recognition gate.
+                 */
+
+            }
+        );
+
+    }
+
+
+    // ====================================================
+    // CLEAR
+    // ====================================================
+
+    if (signClearButton) {
+
+        signClearButton.addEventListener(
+            "click",
+            async function () {
+
+                signRecognizedText.value =
+                    "";
+
+
+                signCurrentLetter.textContent =
+                    "—";
+
+
+                signPrediction.textContent =
+                    "—";
+
+
+                signConfidence.textContent =
+                    "0%";
+
+
+                signHands.textContent =
+                    "0";
+
+
+                signModel.textContent =
+                    "—";
+
+
+                resetSignGate();
+
+
+                try {
+
+                    await fetch(
+                        "/sign_clear",
+                        {
+                            method: "POST"
+                        }
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Sign clear error:",
+                        error
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ====================================================
+    // SIGN TEXT -> EXISTING AVATAR PIPELINE
+    // ====================================================
+
+    if (signTranslateButton) {
+
+        signTranslateButton.addEventListener(
+            "click",
+            async function () {
+
+                const text =
+                    signRecognizedText.value.trim();
+
+
+                if (!text) {
+
+                    alert(
+                        "No recognized sign text yet."
+                    );
+
+                    return;
+
+                }
+
+
+                try {
+
+                    /*
+                     * Keep the existing Flask pipeline.
+                     */
+
+                    const response =
+                        await fetch(
+                            "/save_text",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body: JSON.stringify({
+                                    text: text
+                                })
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (data.error) {
+
+                        alert(
+                            data.message ||
+                            "Could not process sign text."
+                        );
+
+                        return;
+
+                    }
+
+
+                    // ==========================================
+                    // EXISTING TEXT FIELD
+                    // ==========================================
+
+                    const textInput =
+                        document.getElementById(
+                            "textInput"
+                        );
+
+
+                    if (textInput) {
+
+                        textInput.value =
+                            text;
+
+                    }
+
+
+                    // ==========================================
+                    // EXISTING ISL OUTPUT
+                    // ==========================================
+
+                    const islBox =
+                        document.getElementById(
+                            "islBox"
+                        );
+
+
+                    const processedText =
+                        document.getElementById(
+                            "processed-text"
+                        );
+
+
+                    if (islBox) {
+
+                        islBox.textContent =
+                            data.isl_structure || "";
+
+                    }
+
+
+                    if (processedText) {
+
+                        processedText.value =
+                            data.isl_structure || "";
+
+                    }
+
+
+                    /*
+                     * Use the existing application function
+                     * if available.
+                     */
+
+                    if (
+                        typeof processAnimation ===
+                        "function"
+                    ) {
+
+                        processAnimation(
+                            data.isl_structure
+                        );
+
+                    }
+
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Sign translation error:",
+                        error
+                    );
+
+
+                    alert(
+                        "Could not translate recognized sign text."
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+});
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/static/service-worker.js")
+            .then(function () {
+                console.log("SignBridge service worker registered.");
+            })
+            .catch(function (error) {
+                console.error("Service worker registration failed:", error);
+            });
+    });
+}
+</script>
+
+</body>
+
+</html>
