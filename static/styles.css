@@ -840,6 +840,10 @@ textarea:focus {
     transform: translateX(0);
   }
 
+  .content-header {
+    display: none !important;
+  }
+
   .content {
     width: 100%;
     margin-left: 0;
@@ -882,12 +886,9 @@ textarea:focus {
 }
 
 @media (max-width: 480px) {
-  .btn span {
-    display: none;
-  }
-  
   .btn {
-    padding: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.875rem;
   }
   
   .panel-header h2 {
@@ -1413,4 +1414,501 @@ input:focus {
 
 .dark-mode ::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
+}
+
+/* ==========================================================
+   MOBILE APP UI ENHANCEMENTS
+   ========================================================== */
+
+/* Universal touch tap feedback */
+.btn:active, .mobile-nav-btn:active, .tab-button:active, .sign-hud-btn:active {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
+/* Mobile Top Bar (Hidden on Desktop) */
+.mobile-top-bar {
+  display: none;
+}
+
+/* Mobile Bottom Navigation Bar (Hidden on Desktop) */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* Camera HUD Overlay */
+.sign-camera-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.sign-camera-hud-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sign-camera-hud-top > * {
+  pointer-events: auto;
+}
+
+.sign-hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.sign-hud-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sign-hud-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sign-hud-btn:hover, .sign-hud-btn:active {
+  background: rgba(67, 97, 238, 0.85);
+  transform: scale(0.96);
+}
+
+.sign-camera-hud-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  z-index: 10;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.3s ease;
+}
+
+.sign-hud-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #4361ee;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  box-shadow: 0 0 16px rgba(67, 97, 238, 0.6);
+  flex-shrink: 0;
+}
+
+.sign-hud-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.sign-hud-title {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  color: #fff;
+}
+
+.sign-hud-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Speak Sentence Button Styling */
+#signSpeakButton {
+  background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);
+  transition: all 0.2s ease;
+}
+
+#signSpeakButton:hover {
+  box-shadow: 0 6px 20px rgba(67, 97, 238, 0.5);
+  transform: translateY(-1px);
+}
+
+#signSpeakButton:active {
+  transform: scale(0.97);
+}
+
+/* ==========================================================
+   MOBILE SCREEN RESPONSIVENESS (<= 768px)
+   ========================================================== */
+@media (max-width: 768px) {
+  /* Mobile Sticky Top Header */
+  .mobile-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    padding: 0 16px;
+    padding-top: max(env(safe-area-inset-top), 0px);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--gray-200);
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  body.dark-mode .mobile-top-bar {
+    background: rgba(26, 32, 44, 0.94);
+    border-bottom: 1px solid #2d3748;
+  }
+
+  .mobile-top-bar .menu-btn {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-300);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  body.dark-mode .mobile-top-bar .menu-btn {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .mobile-app-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #4361ee;
+    letter-spacing: -0.3px;
+  }
+
+  body.dark-mode .mobile-app-brand {
+    color: #63b3ed;
+  }
+
+  .mobile-app-brand .brand-icon {
+    font-size: 1.3rem;
+  }
+
+  .mobile-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-300);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  body.dark-mode .mobile-icon-btn {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  /* Mobile Bottom Navigation Bar */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    padding-bottom: max(env(safe-area-inset-bottom), 6px);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--gray-200);
+    z-index: 1000;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  body.dark-mode .mobile-bottom-nav {
+    background: rgba(26, 32, 44, 0.96);
+    border-top: 1px solid #2d3748;
+  }
+
+  .mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    flex: 1;
+    max-width: 80px;
+  }
+
+  .mobile-nav-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-nav-btn.active {
+    color: #4361ee;
+    font-weight: 700;
+  }
+
+  body.dark-mode .mobile-nav-btn.active {
+    color: #63b3ed;
+  }
+
+  /* Content Spacing on Mobile */
+  .content {
+    padding: 12px 14px;
+    padding-top: 72px;
+    padding-bottom: 84px;
+  }
+
+  .content-header {
+    display: none !important;
+  }
+
+  /* Touch-friendly segmented tab bar */
+  .input-tabs {
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 14px;
+    background: var(--gray-200);
+  }
+
+  body.dark-mode .input-tabs {
+    background: #2d3748;
+  }
+
+  .tab-button {
+    padding: 10px 8px;
+    font-size: 13px;
+    gap: 6px;
+    border-radius: 10px;
+    min-height: 44px;
+  }
+
+  .tab-button span {
+    display: inline !important;
+  }
+
+  /* Single Column Layout */
+  .sign-input-panel {
+    padding: 12px 8px;
+  }
+
+  .sign-input-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .sign-camera-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .sign-camera-wrapper {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 3 / 4;
+    height: auto;
+    min-height: 480px;
+    max-height: 74vh;
+    border-radius: 18px;
+    margin: 0 auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sign-camera-wrapper.mode-9-16 {
+    aspect-ratio: 9 / 16;
+    max-height: 78vh;
+  }
+
+  .sign-camera-wrapper.big-screen-mode {
+    min-height: 560px;
+    max-height: 86vh;
+    border-radius: 20px;
+  }
+
+  .sign-camera-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .sign-camera-controls #toggleBigScreenBtn {
+    grid-column: span 2;
+  }
+
+  .sign-camera-controls button {
+    min-width: auto;
+    width: 100%;
+    height: 48px;
+    font-size: 15px;
+    border-radius: 12px;
+    justify-content: center;
+  }
+
+  .sign-result-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  #signCurrentLetter {
+    font-size: 52px;
+    padding: 12px;
+    min-height: 75px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  #signRecognizedText {
+    min-height: 90px;
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    line-height: 1.5;
+  }
+
+  /* Action buttons grid */
+  .sign-action-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .sign-action-row button {
+    min-width: auto !important;
+    padding: 10px 4px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+    justify-content: center !important;
+  }
+
+  .sign-primary-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+
+  .sign-primary-actions button {
+    width: 100% !important;
+    height: 52px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 14px !important;
+    justify-content: center !important;
+  }
+
+  /* Output panel on mobile */
+  .output-panel {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .animation-container {
+    height: 240px;
+    border-radius: 14px;
+  }
+
+  /* Dark mode overrides for cards */
+  body.dark-mode .sign-camera-card,
+  body.dark-mode .sign-result-card {
+    background: #1e2433;
+    border-color: #2d3748;
+  }
+
+  body.dark-mode #signRecognizedText,
+  body.dark-mode #signCurrentLetter {
+    background: #141a29;
+    border-color: #2d3748;
+    color: #f8f9fa;
+  }
+
+  body.dark-mode .sign-help {
+    background: #141a29;
+    border-color: #2d3748;
+    color: #a0aec0;
+  }
+
+  body.dark-mode .sign-status {
+    background: #2a334a;
+    color: #93c5fd;
+  }
+
+  body.dark-mode .sign-info-row {
+    border-color: #2d3748;
+  }
+
+  body.dark-mode .sign-info-value {
+    color: #e2e8f0;
+  }
 }

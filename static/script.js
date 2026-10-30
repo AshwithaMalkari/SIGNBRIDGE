@@ -48,14 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let isRecording = false;
 
   // Initialize Speech Recognition
-  if (!('webkitSpeechRecognition' in window)) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
     console.warn("Speech recognition not supported in this browser!");
-    micButton.disabled = true;
-    // Fall back to text input if voice not supported
-    switchToTextInput();
+    if (micButton) micButton.disabled = true;
   } else {
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false; // continuous = false is more reliable across browsers
     recognition.interimResults = true;
     recognition.lang = "en-US";
   }
@@ -65,23 +64,44 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------
   function switchToVoiceInput() {
     state.currentInputMode = 'voice';
-    textInput.style.display = 'none';
-    transcriptField.style.display = 'block';
-    micButton.style.display = 'flex';
-    textSubmitButton.style.display = 'none';
-    inputTitle.textContent = 'Speech Input';
-    // Clear any existing text
-    textInput.value = '';
+    const normalPanel = document.getElementById('normalInputPanel');
+    const signPanel = document.getElementById('signInputPanel');
+    if (normalPanel) normalPanel.style.display = 'block';
+    if (signPanel) signPanel.style.display = 'none';
+
+    if (textInput) textInput.style.display = 'none';
+    if (transcriptField) transcriptField.style.display = 'block';
+    if (micButton) micButton.style.display = 'inline-flex';
+    if (textSubmitButton) textSubmitButton.style.display = 'none';
+    if (inputTitle) inputTitle.textContent = 'Speech Input';
+    if (textInput) textInput.value = '';
+    if (window.feather) feather.replace();
   }
 
   function switchToTextInput() {
     state.currentInputMode = 'text';
-    textInput.style.display = 'block';
-    transcriptField.style.display = 'none';
-    micButton.style.display = 'none';
-    textSubmitButton.style.display = 'flex';
-    inputTitle.textContent = 'Text Input';
-    // Stop recording if active
+    const normalPanel = document.getElementById('normalInputPanel');
+    const signPanel = document.getElementById('signInputPanel');
+    if (normalPanel) normalPanel.style.display = 'block';
+    if (signPanel) signPanel.style.display = 'none';
+
+    if (textInput) textInput.style.display = 'block';
+    if (transcriptField) transcriptField.style.display = 'none';
+    if (micButton) micButton.style.display = 'none';
+    if (textSubmitButton) textSubmitButton.style.display = 'inline-flex';
+    if (inputTitle) inputTitle.textContent = 'Text Input';
+    if (isRecording) {
+      stopRecording();
+    }
+    if (window.feather) feather.replace();
+  }
+
+  function switchToSignInput() {
+    state.currentInputMode = 'sign';
+    const normalPanel = document.getElementById('normalInputPanel');
+    const signPanel = document.getElementById('signInputPanel');
+    if (normalPanel) normalPanel.style.display = 'none';
+    if (signPanel) signPanel.style.display = 'block';
     if (isRecording) {
       stopRecording();
     }
@@ -95,8 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (button.dataset.tab === 'voice') {
         switchToVoiceInput();
-      } else {
+      } else if (button.dataset.tab === 'text') {
         switchToTextInput();
+      } else if (button.dataset.tab === 'sign') {
+        switchToSignInput();
       }
     });
   });
@@ -405,6 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!text) return;
     
     const processedText = text.toUpperCase()
+      .replace(/\|/g, ' ')
       .replace(/ZERO/gi, '0')
       .replace(/ONE/gi, '1')
       .replace(/TWO/gi, '2')
@@ -414,14 +437,15 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/SIX/gi, '6')
       .replace(/SEVEN/gi, '7')
       .replace(/EIGHT/gi, '8')
-      .replace(/NINE/gi, '9');
+      .replace(/NINE/gi, '9')
+      .replace(/[^A-Z0-9\s]/g, ' '); // Clean out punctuation
     
-    const words = processedText.split(/(\d+|\s+)/).filter(w => w.trim() !== '');
+    const words = processedText.split(/\s+/).filter(w => w && w.trim() !== '');
     
     state.animations = [];
     state.characters = [];
     
-    if (processedTextField) processedTextField.textContent = '';
+    if (processedTextField) processedTextField.value = '';
 
     words.forEach(word => {
       if (/^\d+$/.test(word)) {
@@ -433,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       else if (state.wordList.includes(word)) {
         state.animations.push(['add-text', `${word} `]);
-        state.wordModules[word](state);
+        if (state.wordModules[word]) state.wordModules[word](state);
       } 
       else {
         [...word].forEach((ch, i) => {
@@ -444,16 +468,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    if (!state.pending && state.animations.length > 0) {
+    if (state.animations.length > 0) {
       state.pending = true;
-      state.animate();
     }
   }
 
   // -------------------------
   // Sending Text for Processing
   // -------------------------
+  window.sendTextForProcessing = sendTextForProcessing;
+  window.formatISLStructure = formatISLStructure;
+
   function sendTextForProcessing(text) {
+    if (!text) return;
+    if (islBox) islBox.innerHTML = '<span class="loading">Translating to ISL...</span>';
+
     fetch("/save_text", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -461,13 +490,18 @@ document.addEventListener('DOMContentLoaded', () => {
     })
       .then(response => response.json())
       .then(data => {
-        islBox.innerHTML = formatISLStructure(data.isl_structure);
+        if (islBox) islBox.innerHTML = formatISLStructure(data.isl_structure);
+        if (processedTextField) processedTextField.value = data.isl_structure || "";
         saveToHistory(data.original_text, data.isl_structure);
         processAnimation(data.isl_structure);
+        const animContainer = document.getElementById("animationContainer") || document.querySelector(".output-panel");
+        if (animContainer) {
+          animContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       })
       .catch(error => {
         console.error("Processing error:", error);
-        islBox.innerHTML = '<span class="error">Error processing text</span>';
+        if (islBox) islBox.innerHTML = '<span class="error">Error processing text</span>';
       });
   }
 
@@ -601,8 +635,11 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadNumberModules();
       await loadModel(`/static/Models/${state.bot}/${state.bot}.glb`);
       
+      // Start continuous render loop so avatar is visible immediately in default pose
+      state.animate();
+
       window.addEventListener('resize', () => {
-        if (state.camera && state.renderer) {
+        if (state.camera && state.renderer && animationContainer) {
           state.camera.aspect = animationContainer.clientWidth / animationContainer.clientHeight;
           state.camera.updateProjectionMatrix();
           state.renderer.setSize(animationContainer.clientWidth, animationContainer.clientHeight);

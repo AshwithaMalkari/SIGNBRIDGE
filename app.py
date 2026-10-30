@@ -1,4 +1,6 @@
 import base64
+import sys
+import os
 import numpy as np
 from flask import Flask, request, jsonify, render_template, Response
 from flask_cors import CORS
@@ -8,7 +10,10 @@ from nltk.tokenize.treebank import TreebankWordDetokenizer
 import logging
 import spacy
 import re
-import os
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 import cv2
 import time
 import threading
@@ -42,16 +47,29 @@ MONGO_URI = os.getenv("MONGO_URI")
 # MONGODB
 # ============================================================
 
-client = MongoClient(
-    MONGO_URI,
-    connectTimeoutMS=30000
-)
+client = None
+db = None
+histories_collection = None
+local_history = []
 
-db = client["history"]
-
-histories_collection = db["histories"]
-
-logger.info("Connected to MongoDB Atlas successfully!")
+try:
+    if MONGO_URI:
+        client = MongoClient(
+            MONGO_URI,
+            connectTimeoutMS=4000,
+            serverSelectionTimeoutMS=4000
+        )
+        client.admin.command("ping")
+        db = client["history"]
+        histories_collection = db["histories"]
+        logger.info("Connected to MongoDB Atlas successfully!")
+    else:
+        logger.warning("No MONGO_URI set. Using local in-memory history fallback.")
+except Exception as e:
+    logger.warning(f"MongoDB connection failed: {e}. Falling back to local in-memory history.")
+    client = None
+    db = None
+    histories_collection = None
 
 
 # ============================================================
@@ -62,7 +80,9 @@ def download_nltk_resources():
 
     resources = [
         "punkt",
-        "averaged_perceptron_tagger"
+        "punkt_tab",
+        "averaged_perceptron_tagger",
+        "averaged_perceptron_tagger_eng"
     ]
 
     for resource in resources:
@@ -117,7 +137,8 @@ from sign_recognizer import ISLSignRecognizer
 
 app = Flask(
     __name__,
-    template_folder="templates"
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
 )
 
 CORS(app)
@@ -537,10 +558,15 @@ def save_history():
         }
 
 
-        result = histories_collection.insert_one(
-            history_entry
-        )
-
+        if histories_collection is not None:
+            result = histories_collection.insert_one(history_entry)
+            entry_id = str(result.inserted_id)
+        else:
+            entry_id = str(len(local_history) + 1)
+            local_entry = dict(history_entry)
+            local_entry["_id"] = entry_id
+            local_entry["timestamp"] = local_entry["timestamp"].isoformat()
+            local_history.insert(0, local_entry)
 
         return jsonify({
 
@@ -548,7 +574,7 @@ def save_history():
                 "History saved successfully",
 
             "id":
-                str(result.inserted_id)
+                entry_id
 
         }), 201
 
@@ -575,29 +601,27 @@ def get_history():
 
     try:
 
-        entries = list(
-
-            histories_collection
-            .find()
-            .sort(
-                "timestamp",
-                -1
-            )
-            .limit(100)
-
-        )
-
-
-        for entry in entries:
-
-            entry["_id"] = str(
-                entry["_id"]
+        if histories_collection is not None:
+            entries = list(
+                histories_collection
+                .find()
+                .sort(
+                    "timestamp",
+                    -1
+                )
+                .limit(100)
             )
 
+            for entry in entries:
+                entry["_id"] = str(
+                    entry["_id"]
+                )
 
-        return jsonify(
-            entries
-        ), 200
+            return jsonify(
+                entries
+            ), 200
+        else:
+            return jsonify(local_history[:100]), 200
 
 
     except Exception as e:
@@ -622,22 +646,25 @@ def delete_history(entry_id):
 
     try:
 
-        result = histories_collection.delete_one({
+        if histories_collection is not None:
+            result = histories_collection.delete_one({
+                "_id":
+                    ObjectId(entry_id)
+            })
 
-            "_id":
-                ObjectId(entry_id)
-
-        })
-
-
-        if result.deleted_count == 0:
-
-            return jsonify({
-
-                "error":
-                    "Entry not found"
-
-            }), 404
+            if result.deleted_count == 0:
+                return jsonify({
+                    "error":
+                        "Entry not found"
+                }), 404
+        else:
+            before_len = len(local_history)
+            local_history[:] = [e for e in local_history if str(e.get("_id")) != entry_id]
+            if len(local_history) == before_len:
+                return jsonify({
+                    "error":
+                        "Entry not found"
+                }), 404
 
 
         return jsonify({
@@ -670,8 +697,12 @@ def clear_history():
 
     try:
 
-        result = histories_collection.delete_many({})
-
+        if histories_collection is not None:
+            result = histories_collection.delete_many({})
+            deleted_count = result.deleted_count
+        else:
+            deleted_count = len(local_history)
+            local_history.clear()
 
         return jsonify({
 
@@ -679,7 +710,7 @@ def clear_history():
                 "History cleared successfully",
 
             "deleted_count":
-                result.deleted_count
+                deleted_count
 
         }), 200
 
@@ -1131,6 +1162,10 @@ def save_text():
 
 if __name__ == "__main__":
 
+    port = int(os.environ.get("PORT", 5000))
+    print(f" * Server running on http://127.0.0.1:{port}")
     app.run(
-        debug=True
+        host="0.0.0.0",
+        port=port,
+        debug=False
     )
