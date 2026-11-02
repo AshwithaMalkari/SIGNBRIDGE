@@ -35,6 +35,11 @@
       padding: 28px;
     }
 
+    .sign-input-panel.hidden-mode,
+    .feature-view.hidden-mode {
+      display: none !important;
+    }
+
     .sign-input-layout {
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
@@ -392,9 +397,13 @@
 
       /* Single Column Full Width Sign Layout */
       .sign-input-panel {
-        display: block !important;
         padding: 0 !important;
         width: 100% !important;
+      }
+
+      .sign-input-panel.hidden-mode,
+      .feature-view.hidden-mode {
+        display: none !important;
       }
 
       .sign-input-layout {
@@ -2120,9 +2129,33 @@ document.addEventListener("DOMContentLoaded", function () {
         const voicePanel = document.getElementById("voiceInputPanel");
         const textPanel = document.getElementById("textInputPanel");
 
-        if (signPanel) signPanel.style.display = (mode === "sign") ? "block" : "none";
-        if (voicePanel) voicePanel.style.display = (mode === "voice") ? "block" : "none";
-        if (textPanel) textPanel.style.display = (mode === "text") ? "block" : "none";
+        if (signPanel) {
+            if (mode === "sign") {
+                signPanel.style.setProperty("display", "block", "important");
+                signPanel.classList.remove("hidden-mode");
+            } else {
+                signPanel.style.setProperty("display", "none", "important");
+                signPanel.classList.add("hidden-mode");
+            }
+        }
+        if (voicePanel) {
+            if (mode === "voice") {
+                voicePanel.style.setProperty("display", "block", "important");
+                voicePanel.classList.remove("hidden-mode");
+            } else {
+                voicePanel.style.setProperty("display", "none", "important");
+                voicePanel.classList.add("hidden-mode");
+            }
+        }
+        if (textPanel) {
+            if (mode === "text") {
+                textPanel.style.setProperty("display", "block", "important");
+                textPanel.classList.remove("hidden-mode");
+            } else {
+                textPanel.style.setProperty("display", "none", "important");
+                textPanel.classList.add("hidden-mode");
+            }
+        }
 
         document.querySelectorAll(".tab-button").forEach(btn => {
             btn.classList.toggle("active", btn.dataset.tab === mode);
@@ -2134,6 +2167,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (mobSign) mobSign.classList.toggle("active", mode === "sign");
         if (mobVoice) mobVoice.classList.toggle("active", mode === "voice");
         if (mobText) mobText.classList.toggle("active", mode === "text");
+
+        if (mode === 'voice' && typeof window.switchToVoiceInput === 'function') {
+            window.switchToVoiceInput();
+        } else if (mode === 'text' && typeof window.switchToTextInput === 'function') {
+            window.switchToTextInput();
+        } else if (mode === 'sign' && typeof window.switchToSignInput === 'function') {
+            window.switchToSignInput();
+        }
 
         const outPanel = document.querySelector(".output-panel");
         if (outPanel) outPanel.style.display = "flex";
@@ -3224,17 +3265,80 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (mobileNavAvatar) {
         mobileNavAvatar.addEventListener("click", () => {
-            const outPanel = document.querySelector(".output-panel");
-            if (outPanel) {
-                outPanel.scrollIntoView({ behavior: "smooth" });
+            const animEl = document.getElementById("animationContainer") || document.querySelector(".output-panel");
+            if (animEl) {
+                animEl.scrollIntoView({ behavior: "smooth", block: "center" });
             }
         });
     }
 
     if (mobileNavHistory) {
         mobileNavHistory.addEventListener("click", () => {
-            const histBtn = document.getElementById("history-button");
-            if (histBtn) histBtn.click();
+            const histPanel = document.getElementById("history-panel");
+            if (histPanel) {
+                histPanel.classList.toggle("show");
+                if (typeof window.displayHistory === "function") {
+                    window.displayHistory();
+                }
+            } else {
+                const histBtn = document.getElementById("history-button");
+                if (histBtn) histBtn.click();
+            }
+        });
+    }
+
+    // Direct fallbacks for voice and text action buttons
+    const vTransBtn = document.getElementById("voiceTranslateButton");
+    if (vTransBtn) {
+        vTransBtn.addEventListener("click", function() {
+            const tr = document.getElementById("transcript");
+            const text = tr ? tr.value.trim() : "";
+            if (text) {
+                if (typeof window.sendTextForProcessing === "function") {
+                    window.sendTextForProcessing(text);
+                }
+            } else {
+                alert("Please record some speech first by clicking Start Recording.");
+            }
+        });
+    }
+
+    const tSubBtn = document.getElementById("textSubmitButton");
+    if (tSubBtn) {
+        tSubBtn.addEventListener("click", function() {
+            const tIn = document.getElementById("textInput");
+            const text = tIn ? tIn.value.trim() : "";
+            if (text) {
+                if (typeof window.sendTextForProcessing === "function") {
+                    window.sendTextForProcessing(text);
+                }
+            } else {
+                alert("Please enter some text to translate");
+            }
+        });
+    }
+
+    const vClrBtn = document.getElementById("voiceClearButton");
+    if (vClrBtn) {
+        vClrBtn.addEventListener("click", function() {
+            const tr = document.getElementById("transcript");
+            if (tr) tr.value = "";
+            const isl = document.getElementById("islBox");
+            if (isl) isl.innerHTML = "";
+            const pr = document.getElementById("processed-text");
+            if (pr) pr.value = "";
+        });
+    }
+
+    const tClrBtn = document.getElementById("textClearButton");
+    if (tClrBtn) {
+        tClrBtn.addEventListener("click", function() {
+            const tIn = document.getElementById("textInput");
+            if (tIn) tIn.value = "";
+            const isl = document.getElementById("islBox");
+            if (isl) isl.innerHTML = "";
+            const pr = document.getElementById("processed-text");
+            if (pr) pr.value = "";
         });
     }
 

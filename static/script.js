@@ -244,7 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Speech Recognition Methods
   const startRecording = () => {
-    if (state.currentInputMode !== 'voice' || !recognition) return;
+    state.currentInputMode = 'voice';
+    if (!recognition) {
+      alert("Speech recognition is not supported or permitted in this browser. Please use Chrome on Android/Desktop or type in Text Input.");
+      return;
+    }
     try {
       console.log("Starting speech recognition");
       recognition.start();
