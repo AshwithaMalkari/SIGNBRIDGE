@@ -1670,40 +1670,27 @@ document.addEventListener("DOMContentLoaded", function () {
     let isFrameRequestInProgress = false;
 
     async function getMediaCameraStream(facing) {
-        const list = [
-            {
-                video: {
-                    facingMode: facing ? { ideal: facing } : "user",
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    frameRate: { ideal: 30, max: 30 }
-                },
+        const mode = facing || "user";
+        try {
+            return await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: mode },
                 audio: false
-            },
-            {
-                video: {
-                    facingMode: facing ? { ideal: facing } : "user",
-                    frameRate: { ideal: 30 }
-                },
-                audio: false
-            },
-            {
-                video: true,
-                audio: false
-            }
-        ];
-
-        let lastErr = null;
-        for (const c of list) {
+            });
+        } catch (err1) {
+            console.warn("Preferred facingMode failed, falling back to ideal:", err1);
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(c);
-                if (stream) return stream;
-            } catch (err) {
-                lastErr = err;
-                console.warn("Camera fallback constraint attempt:", err);
+                return await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: mode } },
+                    audio: false
+                });
+            } catch (err2) {
+                console.warn("Ideal facingMode failed, falling back to basic video:", err2);
+                return await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
             }
         }
-        throw lastErr || new Error("Could not access camera device.");
     }
 
     const signCameraPlaceholder =
@@ -2019,67 +2006,85 @@ document.addEventListener("DOMContentLoaded", function () {
     // ====================================================
 
     
-    if (startSignButton) {
-        startSignButton.addEventListener("click", async function () {
-            try {
-                if (!navigator.mediaDevices?.getUserMedia) {
-                    throw new Error("Browser camera access is unavailable. Please open via HTTPS or localhost.");
-                }
+    async function startSignRecognition() {
+        if (signRunning) return;
 
-                startSignButton.disabled = true;
-                signStatusText.textContent = "Requesting camera access...";
-
-                cameraStream = await getMediaCameraStream(currentFacingMode);
-
-                signCameraSource.srcObject = cameraStream;
-                signCameraSource.style.transform = currentFacingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
-                signCameraSource.style.display = "block";
-                signCameraPlaceholder.style.display = "none";
-                signVideo.style.display = "none";
-
-                await signCameraSource.play();
-
-                try {
-                    await fetch("/sign_start", { method: "POST" });
-                } catch (e) {
-                    console.warn("Sign start ping notice:", e);
-                }
-
-                signRunning = true;
-                resetSignGate();
-
-                stopSignButton.disabled = false;
-                signStatusText.textContent = "Sign recognition running (30 FPS)";
-                signStatusDot.classList.add("active");
-
-                const signHudStatusDot = document.getElementById("signHudStatusDot");
-                const signHudStatusText = document.getElementById("signHudStatusText");
-                if (signHudStatusDot) signHudStatusDot.classList.add("active");
-                if (signHudStatusText) signHudStatusText.textContent = "LIVE 30FPS";
-
-                sendSignFrames();
-            } catch (error) {
-                console.error("Sign start error:", error);
-
-                signRunning = false;
-
-                if (cameraStream) {
-                    cameraStream.getTracks().forEach(track => track.stop());
-                    cameraStream = null;
-                }
-
-                signCameraSource.srcObject = null;
-                signCameraSource.style.display = "none";
-                signVideo.style.display = "none";
-                signCameraPlaceholder.style.display = "flex";
-
-                startSignButton.disabled = false;
-                stopSignButton.disabled = true;
-                signStatusText.textContent = "Camera could not start";
-
-                alert(error.message || "Could not start camera. Please verify camera permissions in your browser.");
+        try {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error("Browser camera access is unavailable. Please verify you are using HTTPS.");
             }
-        });
+
+            if (startSignButton) startSignButton.disabled = true;
+            if (signStatusText) signStatusText.textContent = "Turning camera on...";
+
+            cameraStream = await getMediaCameraStream(currentFacingMode);
+
+            signCameraSource.muted = true;
+            signCameraSource.playsInline = true;
+            signCameraSource.setAttribute("autoplay", "");
+            signCameraSource.setAttribute("muted", "");
+            signCameraSource.setAttribute("playsinline", "");
+            signCameraSource.setAttribute("webkit-playsinline", "");
+            signCameraSource.srcObject = cameraStream;
+            signCameraSource.style.transform = (currentFacingMode === "user") ? "scaleX(-1)" : "scaleX(1)";
+            signCameraSource.style.display = "block";
+            signCameraPlaceholder.style.display = "none";
+            signVideo.style.display = "none";
+
+            try {
+                const p = signCameraSource.play();
+                if (p && p.catch) p.catch(err => console.warn("Video play notice:", err));
+            } catch (err) {
+                console.warn("Camera play sync err:", err);
+            }
+
+            signRunning = true;
+            resetSignGate();
+
+            if (stopSignButton) stopSignButton.disabled = false;
+            if (signStatusText) signStatusText.textContent = "Sign recognition running (30 FPS)";
+            if (signStatusDot) signStatusDot.classList.add("active");
+
+            const signHudStatusDot = document.getElementById("signHudStatusDot");
+            const signHudStatusText = document.getElementById("signHudStatusText");
+            if (signHudStatusDot) signHudStatusDot.classList.add("active");
+            if (signHudStatusText) signHudStatusText.textContent = "LIVE 30FPS";
+
+            fetch("/sign_start", { method: "POST" }).catch(e => console.warn("Sign start ping:", e));
+
+            sendSignFrames();
+        } catch (error) {
+            console.error("Sign start error:", error);
+
+            signRunning = false;
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+
+            signCameraSource.srcObject = null;
+            signCameraSource.style.display = "none";
+            signVideo.style.display = "none";
+            signCameraPlaceholder.style.display = "flex";
+
+            if (startSignButton) startSignButton.disabled = false;
+            if (stopSignButton) stopSignButton.disabled = true;
+            if (signStatusText) signStatusText.textContent = "Camera could not start";
+
+            alert(error.message || "Could not access camera. Please allow camera permissions in your browser.");
+        }
+    }
+
+    window.startSignRecognition = startSignRecognition;
+
+    if (startSignButton) {
+        startSignButton.addEventListener("click", startSignRecognition);
+    }
+
+    if (signCameraPlaceholder) {
+        signCameraPlaceholder.addEventListener("click", startSignRecognition);
+        signCameraPlaceholder.style.cursor = "pointer";
     }
 
 
