@@ -1,10 +1,10 @@
-﻿// Import Three.js, GLTFLoader, and defaultPose via the import map
+// Import Three.js, GLTFLoader, and defaultPose via the import map
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { defaultPose } from './Animations/defaultPose.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Element selectors - ADDED NEW SELECTORS
+  // Element selectors
   const micButton = document.getElementById('micButton');
   const textSubmitButton = document.getElementById('textSubmitButton');
   const textInput = document.getElementById('textInput');
@@ -41,26 +41,30 @@ document.addEventListener('DOMContentLoaded', () => {
     numberModules: {},
     wordList: [],
     numberList: ['0','1','2','3','4','5','6','7','8','9'],
-    currentInputMode: 'voice' // NEW: Track current input mode
+    currentInputMode: 'sign'
   };
 
-  let recognition;
+  let recognition = null;
   let isRecording = false;
 
-  // Initialize Speech Recognition
+  // Initialize Speech Recognition safely
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     console.warn("Speech recognition not supported in this browser!");
     if (micButton) micButton.disabled = true;
   } else {
-    recognition = new SpeechRecognition();
-    recognition.continuous = false; // continuous = false is more reliable across browsers
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
+    try {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+    } catch (e) {
+      console.warn("SpeechRecognition init error:", e);
+    }
   }
 
   // -------------------------
-  // NEW: Tab Switching Functionality
+  // Tab Switching Functionality
   // -------------------------
   function switchToVoiceInput() {
     state.currentInputMode = 'voice';
@@ -77,7 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === 'voice');
     });
+    const mobVoice = document.getElementById('mobileNavVoice');
+    if (mobVoice) mobVoice.classList.add('active');
+    ['mobileNavSign', 'mobileNavText'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
     if (window.feather) feather.replace();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
   }
 
   function switchToTextInput() {
@@ -98,7 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === 'text');
     });
+    const mobText = document.getElementById('mobileNavText');
+    if (mobText) mobText.classList.add('active');
+    ['mobileNavSign', 'mobileNavVoice'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
     if (window.feather) feather.replace();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
   }
 
   function switchToSignInput() {
@@ -116,7 +134,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-button').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === 'sign');
     });
+    const mobSign = document.getElementById('mobileNavSign');
+    if (mobSign) mobSign.classList.add('active');
+    ['mobileNavVoice', 'mobileNavText'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
     if (window.feather) feather.replace();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
   }
 
   window.switchToVoiceInput = switchToVoiceInput;
@@ -140,26 +165,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------
-  // NEW: Text Input Handling
+  // Text Input Handling
   // -------------------------
   function handleTextSubmit() {
-    const text = textInput.value.trim();
+    const text = textInput ? textInput.value.trim() : '';
     if (text) {
-      // Display the text in the transcript field (optional)
-      transcriptField.value = text;
-      // Process the text (same as voice input)
+      if (transcriptField) transcriptField.value = text;
       sendTextForProcessing(text);
     } else {
       alert('Please enter some text to translate');
     }
   }
 
-  textSubmitButton.addEventListener('click', handleTextSubmit);
+  if (textSubmitButton) {
+    textSubmitButton.addEventListener('click', handleTextSubmit);
+  }
+
+  if (textInput) {
+    textInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        handleTextSubmit();
+      }
+    });
+  }
 
   // Voice & Text Clear and Action buttons
   const voiceClearButton = document.getElementById('voiceClearButton');
   const textClearButton = document.getElementById('textClearButton');
   const voiceTranslateButton = document.getElementById('voiceTranslateButton');
+  const clearBtn = document.getElementById('clearButton');
 
   if (voiceClearButton) {
     voiceClearButton.addEventListener('click', () => {
@@ -177,6 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (transcriptField) transcriptField.value = '';
+      if (textInput) textInput.value = '';
+      if (islBox) islBox.innerHTML = '';
+      if (processedTextField) processedTextField.value = '';
+    });
+  }
+
   if (voiceTranslateButton) {
     voiceTranslateButton.addEventListener('click', () => {
       const text = (transcriptField ? transcriptField.value : '').trim();
@@ -188,91 +231,85 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-
-  // Optional: Submit on Ctrl/Cmd + Enter
-  textInput.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      handleTextSubmit();
-    }
-  });
-
-  // -------------------------
   // Speed Slider Handler
-  // -------------------------
   if (speedSlider) {
-    speedValue.textContent = `${speedSlider.value}x`;
-    
+    if (speedValue) speedValue.textContent = `${speedSlider.value}x`;
     speedSlider.addEventListener('input', () => {
       const multiplier = parseFloat(speedSlider.value);
       state.speedMultiplier = multiplier;
       state.speed = state.baseSpeed * multiplier;
-      speedValue.textContent = `${multiplier.toFixed(1)}x`;
+      if (speedValue) speedValue.textContent = `${multiplier.toFixed(1)}x`;
     });
   }
 
-  // -------------------------
   // Speech Recognition Methods
-  // -------------------------
   const startRecording = () => {
-    if (state.currentInputMode !== 'voice') return;
-    
-    console.log("Starting speech recognition");
-    recognition.start();
-    isRecording = true;
+    if (state.currentInputMode !== 'voice' || !recognition) return;
+    try {
+      console.log("Starting speech recognition");
+      recognition.start();
+      isRecording = true;
+    } catch (e) {
+      console.warn("Recognition start notice:", e);
+    }
   };
 
   const stopRecording = () => {
-    console.log("Stopping speech recognition");
-    recognition.stop();
+    if (!recognition) return;
+    try {
+      console.log("Stopping speech recognition");
+      recognition.stop();
+    } catch (e) {}
     isRecording = false;
-    micButton.innerHTML = '<i data-feather="mic"></i> Start Recording';
-    micButton.classList.remove('recording');
-    feather.replace();
+    if (micButton) {
+      micButton.innerHTML = '<i data-feather="mic"></i> Start Recording';
+      micButton.classList.remove('recording');
+      if (window.feather) feather.replace();
+    }
   };
 
   // -------------------------
   // 3D Animation System Setup
   // -------------------------
-  let isAnimateLoopStarted = false;
   state.animate = function() {
-    if (!isAnimateLoopStarted) {
-      isAnimateLoopStarted = true;
-      const loop = () => {
-        requestAnimationFrame(loop);
-        if (!state.scene || !state.camera || !state.renderer) return;
-        state.renderer.render(state.scene, state.camera);
+    requestAnimationFrame(this.animate.bind(this));
+    if (!this.scene || !this.camera || !this.renderer) {
+      return;
+    }
+    this.renderer.render(this.scene, this.camera);
 
-        if (!state.avatar || state.animations.length === 0) return;
+    if (!this.avatar || this.animations.length === 0) return;
 
-        const currentAnim = state.animations[0];
+    const currentAnim = this.animations[0];
 
-        if (currentAnim && currentAnim.length) {
-          if (!state.flag) {
-            if (currentAnim[0] === 'add-text') {
-              addTextStep(currentAnim);
-              return;
-            } else {
-              processBoneAnimation(currentAnim, state);
-            }
-          }
+    if (currentAnim && currentAnim.length) {
+      if (!this.flag) {
+        if (currentAnim[0] === 'add-text') {
+          addTextStep(currentAnim);
+          return;
         } else {
-          if (!state.flag) {
-            state.flag = true;
-            setTimeout(() => {
-              state.flag = false;
-              state.animations.shift();
-            }, state.pause / state.speedMultiplier);
-          }
+          processBoneAnimation(currentAnim, this);
         }
-      };
-      requestAnimationFrame(loop);
+      }
+    } else {
+      if (!this.flag) {
+        this.flag = true;
+        setTimeout(() => {
+          this.flag = false;
+          this.animations.shift();
+        }, this.pause / this.speedMultiplier);
+      }
     }
   };
 
   function addTextStep(animCommand) {
     if (!state.textTimer) {
       if (processedTextField) {
-        processedTextField.textContent += animCommand[1];
+        if ('value' in processedTextField) {
+          processedTextField.value += animCommand[1];
+        } else {
+          processedTextField.textContent += animCommand[1];
+        }
       }
       state.textTimer = true;
       setTimeout(() => {
@@ -287,8 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const [boneName, action, axis, limit, sign] = animSteps[i];
       let bone = ctx.avatar.getObjectByName(boneName);
       if (!bone && boneName.startsWith('mixamorig')) {
-        const altName = boneName.includes(':') 
-          ? boneName.replace('mixamorig:', 'mixamorig') 
+        const altName = boneName.includes(':')
+          ? boneName.replace('mixamorig:', 'mixamorig')
           : boneName.replace(/^mixamorig/, 'mixamorig:');
         bone = ctx.avatar.getObjectByName(altName);
       }
@@ -318,43 +355,42 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ original_text: originalText, isl_text: islText })
     })
       .then(response => response.json())
-      .then(data => {
-        if (data.error) console.error("History save error:", data.error);
-      })
-      .catch(error => console.error("Error saving history:", error));
+      .catch(error => console.error("History save error:", error));
   };
 
   const displayHistory = () => {
     fetch("/get_history")
       .then(response => response.json())
-      .then(data => {
+      .then(history => {
         const historyList = document.getElementById('history-list');
-        if (data.error) {
-          historyList.innerHTML = `<div class="error">${data.error}</div>`;
-        } else if (data.length > 0) {
-          historyList.innerHTML = data.map(entry => `
-            <div class="history-item" data-id="${entry._id}">
-              <button class="delete-btn" data-id="${entry._id}">
-                <i data-feather="trash-2"></i>
-              </button>
-              <div class="history-time">${new Date(entry.timestamp).toLocaleString()}</div>
-              <div class="history-query">${entry.original_text}</div>
-              <div class="history-isl">${entry.isl_text}</div>
-            </div>
-          `).join('');
-        } else {
-          historyList.innerHTML = '<div class="empty-history">No conversions yet</div>';
+        if (!historyList) return;
+        historyList.innerHTML = '';
+        if (history.length === 0) {
+          historyList.innerHTML = '<p class="empty-history">No conversion history yet.</p>';
+          return;
         }
-        feather.replace();
+        history.reverse().forEach(item => {
+          const historyItem = document.createElement('div');
+          historyItem.className = 'history-item';
+          historyItem.innerHTML = `
+            <div class="history-content">
+              <div class="original-text">${item.original_text}</div>
+              <div class="isl-text">${item.isl_text}</div>
+              <div class="timestamp">${item.timestamp}</div>
+            </div>
+            <button class="delete-btn" data-id="${item._id}">
+              <i data-feather="trash-2"></i>
+            </button>
+          `;
+          historyList.appendChild(historyItem);
+        });
+        if (window.feather) feather.replace();
       })
-      .catch(error => {
-        console.error("History fetch error:", error);
-        document.getElementById('history-list').innerHTML = '<div class="error">Error loading history</div>';
-      });
+      .catch(error => console.error("History fetch error:", error));
   };
 
   // -------------------------
-  // Module Loading Helpers
+  // Dynamic Module Loaders
   // -------------------------
   function getAnimationFunction(moduleObj, key) {
     if (moduleObj[key] && typeof moduleObj[key] === 'function') return moduleObj[key];
@@ -367,20 +403,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const loadAlphabetModules = async () => {
     const alphabetChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    for (const char of alphabetChars) {
+    const promises = alphabetChars.split('').map(async char => {
       try {
         const moduleObj = await import(`./Animations/Alphabets/${char}.js`);
         const animationFunction = getAnimationFunction(moduleObj, char);
         if (animationFunction) state.alphabetModules[char] = animationFunction;
       } catch (error) {
-        console.warn(`Failed to load animation for letter ${char}:`, error);
+        // Quietly handle missing animations
       }
-    }
+    });
+    await Promise.allSettled(promises);
   };
-// Add new Words
+
   const loadWordModules = async () => {
     const commonWords = ['HOME', 'TIME', 'YOU', 'PERSON'];
-    for (const word of commonWords) {
+    const promises = commonWords.map(async word => {
       try {
         const moduleObj = await import(`./Animations/Words/${word.toUpperCase()}.js`);
         const animationFunction = getAnimationFunction(moduleObj, word);
@@ -388,116 +425,95 @@ document.addEventListener('DOMContentLoaded', () => {
           state.wordModules[word] = animationFunction;
           state.wordList.push(word);
         }
-      } catch (error) {
-        console.warn(`Failed to load animation for word ${word}:`, error);
-      }
-    }
+      } catch (error) {}
+    });
+    await Promise.allSettled(promises);
   };
 
   const loadNumberModules = async () => {
     const numbers = '0123456789';
-    for (const num of numbers) {
+    const promises = numbers.split('').map(async num => {
       try {
         const moduleObj = await import(`./Animations/Numbers/${num}.js`);
         const animationFunction = getAnimationFunction(moduleObj, num);
         if (animationFunction) state.numberModules[num] = animationFunction;
-      } catch (error) {
-        console.error(`Failed to load animation for number ${num}:`, error);
-      }
-    }
+      } catch (error) {}
+    });
+    await Promise.allSettled(promises);
   };
 
   // -------------------------
   // Three.js Initialization
   // -------------------------
   function initThree() {
+    if (!animationContainer) return false;
     animationContainer.innerHTML = '';
     state.scene = new THREE.Scene();
-    state.scene.background = new THREE.Color(0x111827); // Dark slate studio backdrop for clear avatar visibility
+    state.scene.background = new THREE.Color(0xffffff); // Standard clean studio background
     
     const w = animationContainer.clientWidth || 360;
     const h = animationContainer.clientHeight || 280;
+
+    state.camera = new THREE.PerspectiveCamera(
+      30,
+      w / h,
+      0.1,
+      1000
+    );
+    state.camera.position.set(0, 1.6, 1.5);
+    state.camera.lookAt(0, 1.4, 0);
     
-    state.camera = new THREE.PerspectiveCamera(32, w / h, 0.1, 1000);
-    state.camera.position.set(0, 1.45, 1.4);
-    state.camera.lookAt(0, 1.35, 0);
-    
-    state.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    state.renderer.setPixelRatio(window.devicePixelRatio || 1);
     state.renderer.shadowMap.enabled = true;
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     state.renderer.setSize(w, h);
-    state.renderer.domElement.style.width = '100%';
-    state.renderer.domElement.style.height = '100%';
-    state.renderer.domElement.style.display = 'block';
-    state.renderer.domElement.style.borderRadius = '14px';
     animationContainer.appendChild(state.renderer.domElement);
   
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     state.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    directionalLight.position.set(1, 3, 2.5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    directionalLight.position.set(0, 3, 3);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 1024;
     directionalLight.shadow.mapSize.height = 1024;
     state.scene.add(directionalLight);
-
-    const fillLight = new THREE.DirectionalLight(0x60a5fa, 0.35);
-    fillLight.position.set(-2, 2, -1);
-    state.scene.add(fillLight);
-
-    if (window.ResizeObserver) {
-      const resizeObs = new ResizeObserver(entries => {
-        for (const entry of entries) {
-          const rw = entry.contentRect.width;
-          const rh = entry.contentRect.height;
-          if (rw > 0 && rh > 0 && state.camera && state.renderer) {
-            state.camera.aspect = rw / rh;
-            state.camera.updateProjectionMatrix();
-            state.renderer.setSize(rw, rh);
-          }
-        }
-      });
-      resizeObs.observe(animationContainer);
-    }
   
     return true;
   }
   
   function loadModel(modelPath) {
     return new Promise((resolve, reject) => {
-      const loader = new GLTFLoader();
-      loader.load(
-        modelPath,
-        (gltf) => {
-          gltf.scene.traverse((child) => {
-            if (child.isMesh) {
-              child.frustumCulled = false;
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-            // CRITICAL FIX: Normalize mixamorig bone names so animation files match ybot GLB
-            if (child.name && child.name.includes('mixamorig:')) {
-              child.name = child.name.replace('mixamorig:', 'mixamorig');
-            }
-          });
+      fetch(modelPath)
+        .then(response => {
+          if (!response.ok) throw new Error(`Model file not found: ${modelPath}`);
+          const loader = new GLTFLoader();
           if (state.avatar) state.scene.remove(state.avatar);
-          state.avatar = gltf.scene;
-          state.scene.add(state.avatar);
-          try {
-            defaultPose(state);
-            resolve();
-          } catch (error) {
-            console.warn('defaultPose notice:', error);
-            resolve();
-          }
-        },
-        undefined,
-        (error) => {
-          console.error('GLTFLoader error:', error);
-          reject(error);
-        }
-      );
+          loader.load(
+            modelPath,
+            (gltf) => {
+              gltf.scene.traverse((child) => {
+                if (child.isMesh) {
+                  child.frustumCulled = false;
+                  child.castShadow = true;
+                  child.receiveShadow = true;
+                }
+              });
+              state.avatar = gltf.scene;
+              state.scene.add(state.avatar);
+              try {
+                defaultPose(state);
+                resolve();
+              } catch (error) {
+                console.warn("defaultPose notice:", error);
+                resolve();
+              }
+            },
+            undefined,
+            (error) => reject(error)
+          );
+        })
+        .catch(error => reject(error));
     });
   }
   
@@ -520,14 +536,17 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/SEVEN/gi, '7')
       .replace(/EIGHT/gi, '8')
       .replace(/NINE/gi, '9')
-      .replace(/[^A-Z0-9\s]/g, ' '); // Clean out punctuation
+      .replace(/[^A-Z0-9\s]/g, ' ');
     
     const words = processedText.split(/\s+/).filter(w => w && w.trim() !== '');
     
     state.animations = [];
     state.characters = [];
     
-    if (processedTextField) processedTextField.value = '';
+    if (processedTextField) {
+      if ('value' in processedTextField) processedTextField.value = '';
+      else processedTextField.textContent = '';
+    }
 
     words.forEach(word => {
       if (/^\d+$/.test(word)) {
@@ -550,8 +569,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    if (state.animations.length > 0) {
+    if (!state.pending && state.animations.length > 0) {
       state.pending = true;
+      state.animate();
     }
   }
 
@@ -573,7 +593,10 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(response => response.json())
       .then(data => {
         if (islBox) islBox.innerHTML = formatISLStructure(data.isl_structure);
-        if (processedTextField) processedTextField.value = data.isl_structure || "";
+        if (processedTextField) {
+          if ('value' in processedTextField) processedTextField.value = data.isl_structure || "";
+          else processedTextField.textContent = data.isl_structure || "";
+        }
         saveToHistory(data.original_text, data.isl_structure);
         processAnimation(data.isl_structure);
         const animContainer = document.getElementById("animationContainer") || document.querySelector(".output-panel");
@@ -608,58 +631,56 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------
-  // Event Listeners for UI Actions
+  // Event Listeners for UI Actions (Safely Guarded)
   // -------------------------
-  document.getElementById('history-button').addEventListener('click', () => {
-    historyPanel.classList.add('show');
-    displayHistory();
-  });
+  const historyBtn = document.getElementById('history-button');
+  if (historyBtn && historyPanel) {
+    historyBtn.addEventListener('click', () => {
+      historyPanel.classList.add('show');
+      displayHistory();
+    });
+  }
 
-  document.getElementById('close-history').addEventListener('click', () => {
-    historyPanel.classList.remove('show');
-  });
+  const closeHistoryBtn = document.getElementById('close-history');
+  if (closeHistoryBtn && historyPanel) {
+    closeHistoryBtn.addEventListener('click', () => {
+      historyPanel.classList.remove('show');
+    });
+  }
 
-  document.getElementById('history-list').addEventListener('click', (e) => {
-    const deleteBtn = e.target.closest('.delete-btn');
-    if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
-      if (confirm("Are you sure you want to delete this entry?")) {
-        fetch(`/delete_history/${id}`, { method: "DELETE" })
+  const historyList = document.getElementById('history-list');
+  if (historyList) {
+    historyList.addEventListener('click', (e) => {
+      const deleteBtn = e.target.closest('.delete-btn');
+      if (deleteBtn) {
+        const id = deleteBtn.dataset.id;
+        if (confirm("Are you sure you want to delete this entry?")) {
+          fetch(`/delete_history/${id}`, { method: "DELETE" })
+            .then(response => response.json())
+            .then(data => data.error ? alert(data.error) : displayHistory())
+            .catch(error => console.error("Delete error:", error));
+        }
+      }
+    });
+  }
+
+  const clearHistoryBtn = document.getElementById('clearHistoryButton');
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to clear all conversion history?")) {
+        fetch("/clear_history", { method: "DELETE" })
           .then(response => response.json())
           .then(data => data.error ? alert(data.error) : displayHistory())
-          .catch(error => console.error("Delete error:", error));
+          .catch(error => console.error("Clear error:", error));
       }
-    }
-  });
+    });
+  }
 
-  document.getElementById('clearHistoryButton').addEventListener('click', () => {
-    if (confirm("Are you sure you want to clear all conversion history?")) {
-      fetch("/clear_history", { method: "DELETE" })
-        .then(response => response.json())
-        .then(data => data.error ? alert(data.error) : displayHistory())
-        .catch(error => console.error("Clear error:", error));
-    }
-  });
-
-  micButton.addEventListener('click', () => {
-    isRecording ? stopRecording() : startRecording();
-  });
-
-  document.getElementById('clearButton').addEventListener('click', () => {
-    transcriptField.value = '';
-    textInput.value = '';
-    islBox.innerHTML = '';
-    processedTextField.textContent = '';
-    state.animations = [];
-    if (!state.scene) {
-      animationContainer.innerHTML = '';
-      const placeholderDiv = document.createElement('div');
-      placeholderDiv.className = 'placeholder-animation';
-      placeholderDiv.innerHTML = '<i data-feather="video"></i><p>Animation will appear here</p>';
-      animationContainer.appendChild(placeholderDiv);
-      feather.replace();
-    }
-  });
+  if (micButton) {
+    micButton.addEventListener('click', () => {
+      isRecording ? stopRecording() : startRecording();
+    });
+  }
 
   // -------------------------
   // Speech Recognition Event Handlers
@@ -667,9 +688,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (recognition) {
     recognition.onstart = () => {
       isRecording = true;
-      micButton.innerHTML = '<i data-feather="mic-off"></i> Stop Recording';
-      micButton.classList.add('recording');
-      feather.replace();
+      if (micButton) {
+        micButton.innerHTML = '<i data-feather="mic-off"></i> Stop Recording';
+        micButton.classList.add('recording');
+        if (window.feather) feather.replace();
+      }
     };
 
     recognition.onresult = (event) => {
@@ -692,7 +715,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         event.results[i].isFinal ? finalTranscript += text : interimTranscript += text;
       }
-      transcriptField.value = finalTranscript + interimTranscript;
+      if (transcriptField) {
+        transcriptField.value = finalTranscript + interimTranscript;
+      }
       if (finalTranscript) sendTextForProcessing(finalTranscript);
     };
 
@@ -702,7 +727,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     recognition.onend = () => {
-      if (isRecording) recognition.start();
+      if (isRecording) {
+        try { recognition.start(); } catch (e) {}
+      }
     };
   }
 
@@ -711,20 +738,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------
   async function init3DSystem() {
     try {
+      console.log("Starting 3D System initialization...");
       if (!initThree()) throw new Error("Three.js initialization failed");
-      await loadAlphabetModules();
-      await loadWordModules();
-      await loadNumberModules();
-      await loadModel(`/static/Models/${state.bot}/${state.bot}.glb`);
       
-      // Start continuous render loop so avatar is visible immediately in default pose
-      state.animate();
+      // Load model FIRST so avatar renders immediately in default pose!
+      console.log("Loading 3D avatar model...");
+      await loadModel(`/static/Models/${state.bot}/${state.bot}.glb`);
+      console.log("3D Avatar model loaded and visible!");
+      
+      // Load gesture libraries in background
+      loadAlphabetModules();
+      loadWordModules();
+      loadNumberModules();
 
       window.addEventListener('resize', () => {
         if (state.camera && state.renderer && animationContainer) {
-          state.camera.aspect = animationContainer.clientWidth / animationContainer.clientHeight;
+          const w = animationContainer.clientWidth || 360;
+          const h = animationContainer.clientHeight || 280;
+          state.camera.aspect = w / h;
           state.camera.updateProjectionMatrix();
-          state.renderer.setSize(animationContainer.clientWidth, animationContainer.clientHeight);
+          state.renderer.setSize(w, h);
         }
       });
       
@@ -735,9 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // -------------------------
   // Mobile Sidebar Toggle
-  // -------------------------
   function initSidebarToggle() {
     const menuBtn = document.getElementById('menu-btn');
     const sidebar = document.querySelector('.sidebar');
@@ -764,15 +795,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function initApp() {
-    feather.replace();
+    if (window.feather) feather.replace();
     initSidebarToggle();
     await init3DSystem();
     const themeToggle = document.querySelector('.theme-toggle');
-    themeToggle.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-    });
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+      });
+    }
   }
 
-  // Start the application
-  initApp();
+  // Start the application safely
+  try {
+    initApp();
+  } catch (err) {
+    console.error("initApp top-level error:", err);
+    init3DSystem();
+  }
 });
