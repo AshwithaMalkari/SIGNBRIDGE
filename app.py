@@ -226,13 +226,10 @@ def sign_start():
 
 @app.route("/sign_frame", methods=["POST"])
 def sign_frame():
-    global last_sign_result
+    global last_sign_result, camera_running
 
     if not camera_running:
-        return jsonify({
-            "error": True,
-            "message": "Sign recognition is not running"
-        }), 409
+        camera_running = True
 
     try:
         image_bytes = request.get_data(cache=False)
@@ -267,7 +264,7 @@ def sign_frame():
             success, buffer = cv2.imencode(
                 ".jpg",
                 annotated_frame,
-                [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+                [int(cv2.IMWRITE_JPEG_QUALITY), 65]
             )
 
             if not success:
