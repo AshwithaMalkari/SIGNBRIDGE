@@ -1053,76 +1053,93 @@
                VOICE / TEXT CONTROLS
                ================================================= -->
 
-          <div id="normalInputPanel" style="display: none;">
-
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-
-              <h2 id="input-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--primary);">Speech Input</h2>
-
-              <div class="controls">
-
-                <button id="micButton"
-                        class="btn primary">
-
-                  <i data-feather="mic"></i>
-
-                  <span>
-                    Start Recording
-                  </span>
-
-                </button>
-
-
-                <button id="textSubmitButton"
-                        class="btn primary"
-                        style="display: none;">
-
-                  <i data-feather="send"></i>
-
-                  <span>
-                    Translate
-                  </span>
-
-                </button>
-
-
-                <button id="clearButton"
-                        class="btn secondary">
-
-                  <i data-feather="trash-2"></i>
-
-                  <span>
-                    Clear
-                  </span>
-
-                </button>
-
+          <!-- =================================================
+               VOICE INPUT PANEL (Feature 2)
+               ================================================= -->
+          <div id="voiceInputPanel" class="feature-view voice-input-panel" style="display: none;">
+            <div class="voice-card">
+              <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #4361ee; display: flex; align-items: center; gap: 8px;">
+                    <i data-feather="mic"></i>
+                    <span>Voice Input</span>
+                  </h2>
+                  <p style="color: #64748b; font-size: 0.85rem; margin: 4px 0 0 0;">
+                    Speak into your microphone to convert speech into Indian Sign Language.
+                  </p>
+                </div>
+                <div class="controls" style="display: flex; gap: 8px;">
+                  <button id="micButton" class="btn primary" type="button">
+                    <i data-feather="mic"></i>
+                    <span>Start Recording</span>
+                  </button>
+                  <button id="voiceClearButton" class="btn secondary" type="button">
+                    <i data-feather="trash-2"></i>
+                    <span>Clear</span>
+                  </button>
+                </div>
               </div>
 
+              <div class="transcript-container" style="margin-top: 10px;">
+                <textarea
+                  id="transcript"
+                  readonly
+                  placeholder="Your transcribed speech will appear here in real-time..."></textarea>
+              </div>
+
+              <button
+                id="voiceTranslateButton"
+                class="btn primary"
+                type="button"
+                style="width: 100%; height: 50px; font-size: 15px; font-weight: 700; border-radius: 12px; margin-top: 14px; background: linear-gradient(135deg, #4361ee, #7209b7); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);">
+                <i data-feather="play"></i>
+                <span>▶️ Translate & Sign with 3D Avatar</span>
+              </button>
             </div>
-
-
-            <div class="transcript-container">
-
-              <textarea
-                id="textInput"
-                placeholder="Type your text here..."
-                style="display: none;"></textarea>
-
-
-              <textarea
-                id="transcript"
-                readonly
-                placeholder="Your transcribed text will appear here...">
-              </textarea>
-
-            </div>
-
           </div>
 
+          <!-- =================================================
+               TEXT INPUT PANEL (Feature 3)
+               ================================================= -->
+          <div id="textInputPanel" class="feature-view text-input-panel" style="display: none;">
+            <div class="text-card">
+              <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #4361ee; display: flex; align-items: center; gap: 8px;">
+                    <i data-feather="type"></i>
+                    <span>Text Input</span>
+                  </h2>
+                  <p style="color: #64748b; font-size: 0.85rem; margin: 4px 0 0 0;">
+                    Type an English sentence to convert into Indian Sign Language and animate the avatar.
+                  </p>
+                </div>
+                <div class="controls" style="display: flex; gap: 8px;">
+                  <button id="textClearButton" class="btn secondary" type="button">
+                    <i data-feather="trash-2"></i>
+                    <span>Clear</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="transcript-container" style="margin-top: 10px;">
+                <textarea
+                  id="textInput"
+                  placeholder="Type your sentence here (e.g. 'Hello, how are you?')..."></textarea>
+              </div>
+
+              <button
+                id="textSubmitButton"
+                class="btn primary"
+                type="button"
+                style="width: 100%; height: 50px; font-size: 15px; font-weight: 700; border-radius: 12px; margin-top: 14px; background: linear-gradient(135deg, #4361ee, #7209b7); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);">
+                <i data-feather="send"></i>
+                <span>▶️ Translate & Sign with 3D Avatar</span>
+              </button>
+            </div>
+          </div>
 
           <!-- =================================================
-               SIGN INPUT PANEL
+               SIGN INPUT PANEL (Feature 1)
                ================================================= -->
 
           <div id="signInputPanel"
@@ -1817,70 +1834,15 @@ document.addEventListener("DOMContentLoaded", function () {
     // TAB - SIGN INPUT
     // ====================================================
 
-    if (signTabButton) {
-
-        signTabButton.addEventListener(
-            "click",
-            function () {
-
-                document
-                    .querySelectorAll(".tab-button")
-                    .forEach(function (button) {
-
-                        button.classList.remove(
-                            "active"
-                        );
-
-                    });
-
-
-                signTabButton.classList.add(
-                    "active"
-                );
-
-
-                normalInputPanel.style.display =
-                    "none";
-
-
-                signInputPanel.style.display =
-                    "block";
-
+    // Unified Feature Tab Listeners (Sign / Voice / Text)
+    document.querySelectorAll(".tab-button").forEach(function(button) {
+        button.addEventListener("click", function() {
+            const mode = button.dataset.tab;
+            if (window.setActiveMode) {
+                window.setActiveMode(mode);
             }
-        );
-
-    }
-
-
-    // ====================================================
-    // VOICE / TEXT TABS
-    // ====================================================
-
-    document
-        .querySelectorAll(
-            '.tab-button[data-tab="voice"], .tab-button[data-tab="text"]'
-        )
-        .forEach(function (button) {
-
-            button.addEventListener(
-                "click",
-                function () {
-
-                    if (signRunning) {
-                        stopSignRecognition();
-                    }
-
-                    signInputPanel.style.display =
-                        "none";
-
-
-                    normalInputPanel.style.display =
-                        "block";
-
-                }
-            );
-
         });
+    });
 
     
     // ====================================================
@@ -1970,8 +1932,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
             }
 
-            // High responsiveness frame loop (60 FPS target: ~16ms)
-            await new Promise(resolve => setTimeout(resolve, 16));
+            // 30 FPS frame loop (~33ms)
+            await new Promise(resolve => setTimeout(resolve, 33));
         }
     }
 
@@ -1995,7 +1957,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         facingMode: { ideal: currentFacingMode },
                         width: { ideal: 720, max: 1920 },
                         height: { ideal: 1280, max: 1920 },
-                        frameRate: { ideal: 60, min: 30 }
+                        frameRate: { ideal: 30, max: 30 }
                     },
                     audio: false
                 });
@@ -2020,13 +1982,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 signCameraPlaceholder.style.display = "none";
                 stopSignButton.disabled = false;
 
-                signStatusText.textContent = "Sign recognition running (60 FPS)";
+                signStatusText.textContent = "Sign recognition running (30 FPS)";
                 signStatusDot.classList.add("active");
 
                 const signHudStatusDot = document.getElementById("signHudStatusDot");
                 const signHudStatusText = document.getElementById("signHudStatusText");
                 if (signHudStatusDot) signHudStatusDot.classList.add("active");
-                if (signHudStatusText) signHudStatusText.textContent = "LIVE 60FPS";
+                if (signHudStatusText) signHudStatusText.textContent = "LIVE 30FPS";
 
                 sendSignFrames();
             } catch (error) {
@@ -2068,6 +2030,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
+
+    
+    // Expose stopSignRecognition globally
+    window.stopSignRecognition = stopSignRecognition;
+
+    // Centralized mode switcher for all 3 features
+    window.setActiveMode = function(mode) {
+        if (mode !== 'sign' && signRunning) {
+            stopSignRecognition();
+        }
+
+        const signPanel = document.getElementById("signInputPanel");
+        const voicePanel = document.getElementById("voiceInputPanel");
+        const textPanel = document.getElementById("textInputPanel");
+
+        if (signPanel) signPanel.style.display = (mode === "sign") ? "block" : "none";
+        if (voicePanel) voicePanel.style.display = (mode === "voice") ? "block" : "none";
+        if (textPanel) textPanel.style.display = (mode === "text") ? "block" : "none";
+
+        document.querySelectorAll(".tab-button").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.tab === mode);
+        });
+
+        const mobSign = document.getElementById("mobileNavSign");
+        const mobVoice = document.getElementById("mobileNavVoice");
+        const mobText = document.getElementById("mobileNavText");
+        if (mobSign) mobSign.classList.toggle("active", mode === "sign");
+        if (mobVoice) mobVoice.classList.toggle("active", mode === "voice");
+        if (mobText) mobText.classList.toggle("active", mode === "text");
+
+        const outPanel = document.querySelector(".output-panel");
+        if (outPanel) outPanel.style.display = "flex";
+
+        if (window.feather) feather.replace();
+    };
 
     async function stopSignRecognition() {
 
@@ -3079,7 +3076,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             facingMode: { ideal: currentFacingMode },
                             width: { ideal: 720, max: 1920 },
                             height: { ideal: 1280, max: 1920 },
-                            frameRate: { ideal: 60, min: 30 }
+                            frameRate: { ideal: 30, max: 30 }
                         },
                         audio: false
                     });
@@ -3130,26 +3127,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (mobileNavSign) {
         mobileNavSign.addEventListener("click", () => {
-            setMobileNavActive(mobileNavSign);
-            if (signTabButton) signTabButton.click();
+            if (window.setActiveMode) window.setActiveMode("sign");
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
     }
 
     if (mobileNavVoice) {
         mobileNavVoice.addEventListener("click", () => {
-            setMobileNavActive(mobileNavVoice);
-            const voiceTab = document.querySelector('.tab-button[data-tab="voice"]');
-            if (voiceTab) voiceTab.click();
+            if (window.setActiveMode) window.setActiveMode("voice");
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
     }
 
     if (mobileNavText) {
         mobileNavText.addEventListener("click", () => {
-            setMobileNavActive(mobileNavText);
-            const textTab = document.querySelector('.tab-button[data-tab="text"]');
-            if (textTab) textTab.click();
+            if (window.setActiveMode) window.setActiveMode("text");
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
     }

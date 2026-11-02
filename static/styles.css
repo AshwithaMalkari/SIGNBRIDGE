@@ -1912,3 +1912,19 @@ input:focus {
     color: #e2e8f0;
   }
 }
+
+
+/* Dedicated Voice & Text Feature Cards */
+.voice-card, .text-card {
+  background: #f8f9fc;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dark-mode .voice-card, body.dark-mode .text-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}

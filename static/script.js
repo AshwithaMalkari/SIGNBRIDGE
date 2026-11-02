@@ -64,48 +64,64 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------
   function switchToVoiceInput() {
     state.currentInputMode = 'voice';
-    const normalPanel = document.getElementById('normalInputPanel');
+    if (window.stopSignRecognition) {
+      window.stopSignRecognition();
+    }
     const signPanel = document.getElementById('signInputPanel');
-    if (normalPanel) normalPanel.style.display = 'block';
+    const voicePanel = document.getElementById('voiceInputPanel');
+    const textPanel = document.getElementById('textInputPanel');
     if (signPanel) signPanel.style.display = 'none';
+    if (voicePanel) voicePanel.style.display = 'block';
+    if (textPanel) textPanel.style.display = 'none';
 
-    if (textInput) textInput.style.display = 'none';
-    if (transcriptField) transcriptField.style.display = 'block';
-    if (micButton) micButton.style.display = 'inline-flex';
-    if (textSubmitButton) textSubmitButton.style.display = 'none';
-    if (inputTitle) inputTitle.textContent = 'Speech Input';
-    if (textInput) textInput.value = '';
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === 'voice');
+    });
     if (window.feather) feather.replace();
   }
 
   function switchToTextInput() {
     state.currentInputMode = 'text';
-    const normalPanel = document.getElementById('normalInputPanel');
-    const signPanel = document.getElementById('signInputPanel');
-    if (normalPanel) normalPanel.style.display = 'block';
-    if (signPanel) signPanel.style.display = 'none';
-
-    if (textInput) textInput.style.display = 'block';
-    if (transcriptField) transcriptField.style.display = 'none';
-    if (micButton) micButton.style.display = 'none';
-    if (textSubmitButton) textSubmitButton.style.display = 'inline-flex';
-    if (inputTitle) inputTitle.textContent = 'Text Input';
+    if (window.stopSignRecognition) {
+      window.stopSignRecognition();
+    }
     if (isRecording) {
       stopRecording();
     }
+    const signPanel = document.getElementById('signInputPanel');
+    const voicePanel = document.getElementById('voiceInputPanel');
+    const textPanel = document.getElementById('textInputPanel');
+    if (signPanel) signPanel.style.display = 'none';
+    if (voicePanel) voicePanel.style.display = 'none';
+    if (textPanel) textPanel.style.display = 'block';
+
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === 'text');
+    });
     if (window.feather) feather.replace();
   }
 
   function switchToSignInput() {
     state.currentInputMode = 'sign';
-    const normalPanel = document.getElementById('normalInputPanel');
-    const signPanel = document.getElementById('signInputPanel');
-    if (normalPanel) normalPanel.style.display = 'none';
-    if (signPanel) signPanel.style.display = 'block';
     if (isRecording) {
       stopRecording();
     }
+    const signPanel = document.getElementById('signInputPanel');
+    const voicePanel = document.getElementById('voiceInputPanel');
+    const textPanel = document.getElementById('textInputPanel');
+    if (signPanel) signPanel.style.display = 'block';
+    if (voicePanel) voicePanel.style.display = 'none';
+    if (textPanel) textPanel.style.display = 'none';
+
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === 'sign');
+    });
+    if (window.feather) feather.replace();
   }
+
+  window.switchToVoiceInput = switchToVoiceInput;
+  window.switchToTextInput = switchToTextInput;
+  window.switchToSignInput = switchToSignInput;
 
   // Set up tab event listeners
   tabButtons.forEach(button => {
@@ -139,6 +155,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   textSubmitButton.addEventListener('click', handleTextSubmit);
+
+  // Voice & Text Clear and Action buttons
+  const voiceClearButton = document.getElementById('voiceClearButton');
+  const textClearButton = document.getElementById('textClearButton');
+  const voiceTranslateButton = document.getElementById('voiceTranslateButton');
+
+  if (voiceClearButton) {
+    voiceClearButton.addEventListener('click', () => {
+      if (transcriptField) transcriptField.value = '';
+      if (islBox) islBox.innerHTML = '';
+      if (processedTextField) processedTextField.value = '';
+    });
+  }
+
+  if (textClearButton) {
+    textClearButton.addEventListener('click', () => {
+      if (textInput) textInput.value = '';
+      if (islBox) islBox.innerHTML = '';
+      if (processedTextField) processedTextField.value = '';
+    });
+  }
+
+  if (voiceTranslateButton) {
+    voiceTranslateButton.addEventListener('click', () => {
+      const text = (transcriptField ? transcriptField.value : '').trim();
+      if (text) {
+        sendTextForProcessing(text);
+      } else {
+        alert('Please record some speech first by clicking Start Recording.');
+      }
+    });
+  }
+
 
   // Optional: Submit on Ctrl/Cmd + Enter
   textInput.addEventListener('keydown', (e) => {
