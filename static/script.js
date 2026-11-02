@@ -233,35 +233,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------
   // 3D Animation System Setup
   // -------------------------
+  let isAnimateLoopStarted = false;
   state.animate = function() {
-    requestAnimationFrame(this.animate.bind(this));
-    if (!this.scene || !this.camera || !this.renderer) {
-      console.warn("Scene, camera or renderer not initialized");
-      return;
-    }
-    this.renderer.render(this.scene, this.camera);
+    if (!isAnimateLoopStarted) {
+      isAnimateLoopStarted = true;
+      const loop = () => {
+        requestAnimationFrame(loop);
+        if (!state.scene || !state.camera || !state.renderer) return;
+        state.renderer.render(state.scene, state.camera);
 
-    if (!this.avatar || this.animations.length === 0) return;
+        if (!state.avatar || state.animations.length === 0) return;
 
-    const currentAnim = this.animations[0];
+        const currentAnim = state.animations[0];
 
-    if (currentAnim && currentAnim.length) {
-      if (!this.flag) {
-        if (currentAnim[0] === 'add-text') {
-          addTextStep(currentAnim);
-          return;
+        if (currentAnim && currentAnim.length) {
+          if (!state.flag) {
+            if (currentAnim[0] === 'add-text') {
+              addTextStep(currentAnim);
+              return;
+            } else {
+              processBoneAnimation(currentAnim, state);
+            }
+          }
         } else {
-          processBoneAnimation(currentAnim, this);
+          if (!state.flag) {
+            state.flag = true;
+            setTimeout(() => {
+              state.flag = false;
+              state.animations.shift();
+            }, state.pause / state.speedMultiplier);
+          }
         }
-      }
-    } else {
-      if (!this.flag) {
-        this.flag = true;
-        setTimeout(() => {
-          this.flag = false;
-          this.animations.shift();
-        }, this.pause / this.speedMultiplier);
-      }
+      };
+      requestAnimationFrame(loop);
     }
   };
 
@@ -281,19 +285,24 @@ document.addEventListener('DOMContentLoaded', () => {
   function processBoneAnimation(animSteps, ctx) {
     for (let i = 0; i < animSteps.length;) {
       const [boneName, action, axis, limit, sign] = animSteps[i];
-      const bone = ctx.avatar.getObjectByName(boneName);
+      let bone = ctx.avatar.getObjectByName(boneName);
+      if (!bone && boneName.startsWith('mixamorig')) {
+        const altName = boneName.includes(':') 
+          ? boneName.replace('mixamorig:', 'mixamorig') 
+          : boneName.replace(/^mixamorig/, 'mixamorig:');
+        bone = ctx.avatar.getObjectByName(altName);
+      }
       if (bone) {
-        if (sign === "+" && bone[action][axis] < limit) {
+        if (sign === '+' && bone[action][axis] < limit) {
           bone[action][axis] = Math.min(bone[action][axis] + ctx.speed, limit);
           i++;
-        } else if (sign === "-" && bone[action][axis] > limit) {
+        } else if (sign === '-' && bone[action][axis] > limit) {
           bone[action][axis] = Math.max(bone[action][axis] - ctx.speed, limit);
           i++;
         } else {
           animSteps.splice(i, 1);
         }
       } else {
-        console.warn(`Bone not found: ${boneName}`);
         animSteps.splice(i, 1);
       }
     }
@@ -404,67 +413,91 @@ document.addEventListener('DOMContentLoaded', () => {
   function initThree() {
     animationContainer.innerHTML = '';
     state.scene = new THREE.Scene();
-    state.scene.background = new THREE.Color(0xffffff);
+    state.scene.background = new THREE.Color(0x111827); // Dark slate studio backdrop for clear avatar visibility
     
-    state.camera = new THREE.PerspectiveCamera(
-      30,
-      animationContainer.clientWidth / animationContainer.clientHeight,
-      0.1,
-      1000
-    );
-    state.camera.position.set(0, 1.6, 1.5);
-    state.camera.lookAt(0, 1.4, 0);
+    const w = animationContainer.clientWidth || 360;
+    const h = animationContainer.clientHeight || 280;
     
-    state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    state.renderer.setPixelRatio(window.devicePixelRatio);
+    state.camera = new THREE.PerspectiveCamera(32, w / h, 0.1, 1000);
+    state.camera.position.set(0, 1.45, 1.4);
+    state.camera.lookAt(0, 1.35, 0);
+    
+    state.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     state.renderer.shadowMap.enabled = true;
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    state.renderer.setSize(animationContainer.clientWidth, animationContainer.clientHeight);
+    state.renderer.setSize(w, h);
+    state.renderer.domElement.style.width = '100%';
+    state.renderer.domElement.style.height = '100%';
+    state.renderer.domElement.style.display = 'block';
+    state.renderer.domElement.style.borderRadius = '14px';
     animationContainer.appendChild(state.renderer.domElement);
   
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
     state.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 3, 3);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    directionalLight.position.set(1, 3, 2.5);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 1024;
     directionalLight.shadow.mapSize.height = 1024;
     state.scene.add(directionalLight);
+
+    const fillLight = new THREE.DirectionalLight(0x60a5fa, 0.35);
+    fillLight.position.set(-2, 2, -1);
+    state.scene.add(fillLight);
+
+    if (window.ResizeObserver) {
+      const resizeObs = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const rw = entry.contentRect.width;
+          const rh = entry.contentRect.height;
+          if (rw > 0 && rh > 0 && state.camera && state.renderer) {
+            state.camera.aspect = rw / rh;
+            state.camera.updateProjectionMatrix();
+            state.renderer.setSize(rw, rh);
+          }
+        }
+      });
+      resizeObs.observe(animationContainer);
+    }
   
     return true;
   }
   
   function loadModel(modelPath) {
     return new Promise((resolve, reject) => {
-      fetch(modelPath)
-        .then(response => {
-          if (!response.ok) throw new Error(`Model file not found: ${modelPath}`);
-          const loader = new GLTFLoader();
+      const loader = new GLTFLoader();
+      loader.load(
+        modelPath,
+        (gltf) => {
+          gltf.scene.traverse((child) => {
+            if (child.isMesh) {
+              child.frustumCulled = false;
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+            // CRITICAL FIX: Normalize mixamorig bone names so animation files match ybot GLB
+            if (child.name && child.name.includes('mixamorig:')) {
+              child.name = child.name.replace('mixamorig:', 'mixamorig');
+            }
+          });
           if (state.avatar) state.scene.remove(state.avatar);
-          loader.load(
-            modelPath,
-            (gltf) => {
-              gltf.scene.traverse((child) => {
-                if (child.isMesh) {
-                  child.frustumCulled = false;
-                  child.castShadow = true;
-                  child.receiveShadow = true;
-                }
-              });
-              state.avatar = gltf.scene;
-              state.scene.add(state.avatar);
-              try {
-                defaultPose(state);
-                resolve();
-              } catch (error) {
-                reject(error);
-              }
-            },
-            undefined,
-            (error) => reject(error)
-          );
-        })
-        .catch(error => reject(error));
+          state.avatar = gltf.scene;
+          state.scene.add(state.avatar);
+          try {
+            defaultPose(state);
+            resolve();
+          } catch (error) {
+            console.warn('defaultPose notice:', error);
+            resolve();
+          }
+        },
+        undefined,
+        (error) => {
+          console.error('GLTFLoader error:', error);
+          reject(error);
+        }
+      );
     });
   }
   

@@ -1609,7 +1609,7 @@
 
   <script
     type="module"
-    src="{{ url_for('static', filename='script.js') }}">
+    src="{{ url_for('static', filename='script.js') }}?v=3.1">
   </script>
 
 
@@ -2062,6 +2062,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const outPanel = document.querySelector(".output-panel");
         if (outPanel) outPanel.style.display = "flex";
+
+        setTimeout(function () {
+            window.dispatchEvent(new Event("resize"));
+        }, 50);
 
         if (window.feather) feather.replace();
     };
